@@ -33,7 +33,7 @@ const LoadingScreen = () => {
     useEffect(() => {
         const timeout = setTimeout(() => {
             history.push("/customer");
-        }, 1000);
+        }, 2000);
 
         return () => clearTimeout(timeout);
     }, [history]);
