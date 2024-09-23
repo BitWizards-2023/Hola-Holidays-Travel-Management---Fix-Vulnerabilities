@@ -94,19 +94,29 @@ const getCustomerProfileById = asyncHandler(async (req, res) => {
 
 //update customer profile by customer
 const updateCustomerProfile = asyncHandler(async (req, res) => {
-	const customer = await Customer.findById(req.customer._id);
+	console.log("Request body:", req.body);  // Log request body to check if _id is present
+	const { _id, firstName, lastName, telephone, address, gender, country, email, password, pic } = req.body;
+
+	const customer = await Customer.findById(_id);
 
 	if (customer) {
+		// Check if the user is a Google user (password is 'google-oauth')
+		const isGoogleUser = customer.password === 'google-oauth';
+
+		// Allow updates only to fields that are allowed to be updated
 		customer.firstName = req.body.firstName || customer.firstName;
 		customer.lastName = req.body.lastName || customer.lastName;
 		customer.telephone = req.body.telephone || customer.telephone;
 		customer.address = req.body.address || customer.address;
 		customer.gender = req.body.gender || customer.gender;
 		customer.country = req.body.country || customer.country;
-		customer.email = req.body.email || customer.email;
-		customer.pic = req.body.pic || customer.pic;
-		customer.password = req.body.password || customer.password;
-		
+
+		// Prevent updates to email if it's a Google user
+		if (!isGoogleUser) {
+			customer.email = req.body.email || customer.email; // Allow email change only if not a Google user
+		}
+
+		// Save updated customer profile
 		const updatedCustomer = await customer.save();
 
 		res.json({
@@ -117,15 +127,15 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 			address: updatedCustomer.address,
 			gender: updatedCustomer.gender,
 			country: updatedCustomer.country,
-			email: updatedCustomer.email,
+			email: updatedCustomer.email, // Email is only updated if not a Google user
 			pic: updatedCustomer.pic,
-			regDate: updatedCustomer.regDate,
 		});
 	} else {
 		res.status(404);
-		throw new Error("Customer Not Found !");
+		throw new Error("Customer Not Found!");
 	}
 });
+
 
 //update customer profile by admin
 const updateCustomerProfileById = asyncHandler(async (req, res) => {

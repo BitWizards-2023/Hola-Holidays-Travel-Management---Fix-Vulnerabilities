@@ -73,8 +73,8 @@ const CustomerEditScreen = () => {
 	};
 
 	const submitHandler = async (e) => {
-		e.preventDefault();
-
+		e.preventDefault("ID ==" +customerInfo._id);
+		console.log()
 		if (password !== confirmpassword) {
 			setMessage("Passwords do not match");
 		} else {
@@ -88,7 +88,9 @@ const CustomerEditScreen = () => {
 				email,
 				password,
 				pic,
+				_id: customerInfo._id,
 			};
+			console.log(customerUpdatedInfo);
 			await dispatch(customerUpdateProfile(customerUpdatedInfo));
 
 			setTimeout(function () {
@@ -275,25 +277,31 @@ const CustomerEditScreen = () => {
 										/>
 									</Form.Group>
 									<br></br>
-									<Form.Group controlId="formBasicPassword">
-										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Password</Form.Label>
-										<Form.Control
-											type="password"
-											value={password}
-											placeholder="Password"
-											onChange={(e) => setPassword(e.target.value)}
-										/>
-									</Form.Group>
-									<br></br>
-									<Form.Group controlId="confirmPassword">
-										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Confirm Password</Form.Label>
-										<Form.Control
-											type="password"
-											value={confirmpassword}
-											placeholder="Confirm Password"
-											onChange={(e) => setConfirmPassword(e.target.value)}
-										/>
-									</Form.Group>
+									{customerInfo && customerInfo.password !== 'google-oauth' && (
+										<>
+											<Form.Group controlId="formBasicPassword">
+												<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Password</Form.Label>
+												<Form.Control
+													type="password"
+													value={password}
+													placeholder="Password"
+													onChange={(e) => setPassword(e.target.value)}
+												/>
+											</Form.Group>
+											<br></br>
+											<Form.Group controlId="confirmPassword">
+												<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Confirm Password</Form.Label>
+												<Form.Control
+													type="password"
+													value={confirmpassword}
+													placeholder="Confirm Password"
+													onChange={(e) => setConfirmPassword(e.target.value)}
+												/>
+											</Form.Group>
+											<br></br>
+										</>
+									)}
+
 									<br></br>
 									{picMessage && <ErrorMessage variant="danger">{picMessage}</ErrorMessage>}
 									<Form.Group controlId="pic">
