@@ -245,15 +245,17 @@ const CustomerEditScreen = () => {
 										<select
 											className="form-control"
 											id="customerGender"
-											value={gender}
-											onChange={(e) => setGender(e.target.value)}
+											value={gender} // This should still be dynamically set
+											onChange={(e) => setGender(e.target.value)} // Update gender when selected
 											required
 										>
 											<option>Select Gender</option>
-											<option value={gender.Male}>Male</option>
-											<option value={gender.Female}>Female</option>
+											{/* Use direct string values instead of gender.Male */}
+											<option value="Male">Male</option>
+											<option value="Female">Female</option>
 										</select>
 									</div>
+
 									<br></br>
 									<Form.Group controlId="customerFormBasicCountry">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Country</Form.Label>
@@ -277,7 +279,7 @@ const CustomerEditScreen = () => {
 										/>
 									</Form.Group>
 									<br></br>
-									{customerInfo && customerInfo.password !== 'google-oauth' && (
+									{customerInfo && customerInfo.password !== 'google-oauth' && customerInfo.password !== 'facebook-oauth' && (
 										<>
 											<Form.Group controlId="formBasicPassword">
 												<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Password</Form.Label>
@@ -303,6 +305,7 @@ const CustomerEditScreen = () => {
 									)}
 
 									<br></br>
+
 									{picMessage && <ErrorMessage variant="danger">{picMessage}</ErrorMessage>}
 									<Form.Group controlId="pic">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Profile Picture</Form.Label>

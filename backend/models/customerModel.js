@@ -44,6 +44,7 @@ const customerSchema = mongoose.Schema(
 			type: String,
 			default: new Date(),
 		},
+		facebookId: { type: String },
 	},
 	{
 		timestamps: true,

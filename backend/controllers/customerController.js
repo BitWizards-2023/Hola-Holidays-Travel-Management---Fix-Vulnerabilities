@@ -100,8 +100,9 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 	const customer = await Customer.findById(_id);
 
 	if (customer) {
-		// Check if the user is a Google user (password is 'google-oauth')
+		// Check if the user is a Google or Facebook user (password is 'google-oauth' or 'facebook-oauth')
 		const isGoogleUser = customer.password === 'google-oauth';
+		const isFacebookUser = customer.password === 'facebook-oauth';
 
 		// Allow updates only to fields that are allowed to be updated
 		customer.firstName = req.body.firstName || customer.firstName;
@@ -111,14 +112,15 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 		customer.gender = req.body.gender || customer.gender;
 		customer.country = req.body.country || customer.country;
 
-		// Prevent updates to email if it's a Google user
-		if (!isGoogleUser) {
-			customer.email = req.body.email || customer.email; // Allow email change only if not a Google user
+		// Prevent updates to email if it's a Google or Facebook user
+		if (!isGoogleUser && !isFacebookUser) {
+			customer.email = req.body.email || customer.email; // Allow email change only if not a Google or Facebook user
 		}
 
 		// Save updated customer profile
 		const updatedCustomer = await customer.save();
 
+		// Respond with the updated customer information
 		res.json({
 			_id: updatedCustomer._id,
 			firstName: updatedCustomer.firstName,
@@ -127,7 +129,7 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 			address: updatedCustomer.address,
 			gender: updatedCustomer.gender,
 			country: updatedCustomer.country,
-			email: updatedCustomer.email, // Email is only updated if not a Google user
+			email: updatedCustomer.email, // Email is only updated if not a Google or Facebook user
 			pic: updatedCustomer.pic,
 		});
 	} else {

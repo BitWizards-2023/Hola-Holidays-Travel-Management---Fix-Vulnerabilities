@@ -6,14 +6,14 @@ import { useDispatch, useSelector } from "react-redux";
 import Loading from "../../../components/Loading";
 import ErrorMessage from "../../../components/ErrorMessage";
 import { customerLogin } from "../../../actions/userManagementActions/customerActions";
-import { useGoogleLogin } from '@react-oauth/google';
-import axios from 'axios';
+import { FaGoogle, FaFacebook } from 'react-icons/fa'; // Import icons from react-icons
 
 const CustomerLogin = ({ history }) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 
 	const googleUrl = "http://localhost:5001/auth/google";
+	const facebookUrl = "http://localhost:5001/auth/facebook";
 
 	const dispatch = useDispatch();
 
@@ -93,15 +93,49 @@ const CustomerLogin = ({ history }) => {
 								/>
 							</Form.Group>
 							<br />
-							<Button variant="primary" type="submit">
-								Submit
-							</Button>
 
-							<br></br>
+							{/* Flexbox container for buttons */}
+							<div style={{ display: 'flex', justifyContent: 'space-between' }}>
+								<Button variant="primary"
+									style={{
+										color: 'white',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										gap: '8px', // Add some space between icon and text
+									}} type="submit">
+									Submit
+								</Button>
 
-							<br></br>
+								<Button
+									onClick={onClickUrl(`${googleUrl}`)}
+									style={{
+										backgroundColor: '#DB4437',
+										color: 'white',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										gap: '8px', // Add some space between icon and text
+									}}
+								>
+									<FaGoogle /> Google Auth
+								</Button>
+
+								<Button
+									onClick={onClickUrl(`${facebookUrl}`)}
+									style={{
+										backgroundColor: '#4267B2',
+										color: 'white',
+										display: 'flex',
+										alignItems: 'center',
+										justifyContent: 'center',
+										gap: '8px', // Add some space between icon and text
+									}}
+								>
+									<FaFacebook /> Facebook Auth
+								</Button>
+							</div>
 						</Form>
-						<Button onClick={onClickUrl(`${googleUrl}`)}>Google Auth</Button>
 					</div>
 				</Card>
 			</MainScreen>
