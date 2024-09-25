@@ -1,15 +1,32 @@
 const asyncHandler = require("express-async-handler");
 const Customer = require("../models/customerModel");
+const bcrypt = require("bcrypt");
 
-// register  customer profile
+// Utility function to sanitize input and prevent NoSQL injection
+const sanitizeInput = (input) => {
+	return input.replace(/[$.]/g, ""); // Removes `$` and `.` to prevent injection attempts
+};
+
+// Register customer profile
 const registerCustomer = asyncHandler(async (req, res) => {
-	const { firstName, lastName, telephone, address, gender, country, email, password, pic } = req.body;
+	let { firstName, lastName, telephone, address, gender, country, email, password, pic } = req.body;
+
+	// Sanitize inputs to prevent NoSQL injection
+	firstName = sanitizeInput(firstName);
+	lastName = sanitizeInput(lastName);
+	telephone = sanitizeInput(telephone);
+	address = sanitizeInput(address);
+	gender = sanitizeInput(gender);
+	country = sanitizeInput(country);
+	email = sanitizeInput(email);
 
 	const customerExists = await Customer.findOne({ email });
 	if (customerExists) {
-		res.status(400);
-		throw new Error("Customer Profile Exists !");
+		return res.status(400).json({ message: "Customer Profile Exists!" });
 	}
+
+	// Hash password before saving
+	const hashedPassword = await bcrypt.hash(password, 10);
 
 	const customer = new Customer({
 		firstName,
@@ -19,94 +36,112 @@ const registerCustomer = asyncHandler(async (req, res) => {
 		gender,
 		country,
 		email,
-		password,
+		password: hashedPassword, // Save the hashed password
 		pic,
 	});
 
-	const addedCustomer =await customer.save();
+	const addedCustomer = await customer.save();
 
-	if (customer) {
-		res.status(201).json(addedCustomer);
+	if (addedCustomer) {
+		res.status(201).json({
+			_id: addedCustomer._id,
+			firstName: addedCustomer.firstName,
+			lastName: addedCustomer.lastName,
+			telephone: addedCustomer.telephone,
+			address: addedCustomer.address,
+			gender: addedCustomer.gender,
+			country: addedCustomer.country,
+			email: addedCustomer.email,
+			pic: addedCustomer.pic,
+			regDate: addedCustomer.regDate,
+		});
 	} else {
-		res.status(400);
-		throw new Error("Customer Registration Failed !");
+		res.status(400).json({ message: "Customer Registration Failed!" });
 	}
 });
 
-//authenticate customer profile
+// Authenticate customer profile
 const authCustomer = asyncHandler(async (req, res) => {
 	const { email, password } = req.body;
 
-	const customer = await Customer.findOne({ email });
+	// Sanitize email input
+	const sanitizedEmail = sanitizeInput(email);
+
+	const customer = await Customer.findOne({ email: sanitizedEmail }).select("+password");
 
 	if (!customer) {
-		res.status(400);
-		throw new Error("Invalid Email or Password");
+		return res.status(400).json({ message: "Invalid Email or Password" });
 	}
-	if (!(password === customer.password)) {
-		res.status(400);
-		throw new Error("Invalid Email or Password");
-	} else {
-		res.status(201).json({
-			_id: customer._id,
-			firstName: customer.firstName,
-			lastName: customer.lastName,
-			telephone: customer.telephone,
-			address: customer.address,
-			gender: customer.gender,
-			country: customer.country,
-			email: customer.email,
-			pic: customer.pic,
-			regDate: customer.regDate,
-		});
+
+	// Compare hashed password
+	const isMatch = await bcrypt.compare(password, customer.password);
+	if (!isMatch) {
+		return res.status(400).json({ message: "Invalid Email or Password" });
 	}
+
+	// Successful authentication
+	res.status(200).json({
+		_id: customer._id,
+		firstName: customer.firstName,
+		lastName: customer.lastName,
+		telephone: customer.telephone,
+		address: customer.address,
+		gender: customer.gender,
+		country: customer.country,
+		email: customer.email,
+		pic: customer.pic,
+		regDate: customer.regDate,
+	});
 });
 
-//get all of customers list
+// Get all customers
 const getCustomers = asyncHandler(async (req, res) => {
-	const customers = await Customer.find();
+	const customers = await Customer.find().select("-password"); // Exclude passwords from results
 	res.json(customers);
 });
 
-// view customer profile by customer
+// View customer profile by customer
 const getCustomerProfile = asyncHandler(async (req, res) => {
-	const customer = await Customer.findById(req.customer._id);
+	const customer = await Customer.findById(req.customer._id).select("-password");
 
 	if (customer) {
 		res.json(customer);
 	} else {
-		res.status(400);
-		throw new Error("Customer not found !");
+		res.status(404).json({ message: "Customer not found!" });
 	}
 });
 
-// view customer profile by admin
+// View customer profile by admin
 const getCustomerProfileById = asyncHandler(async (req, res) => {
-	const customer = await Customer.findById(req.params._id);
+	const customer = await Customer.findById(req.params._id).select("-password");
 
 	if (customer) {
 		res.json(customer);
 	} else {
-		res.status(400);
-		throw new Error("Customer not found !");
+		res.status(404).json({ message: "Customer not found!" });
 	}
 });
 
-//update customer profile by customer
+// Update customer profile by customer
 const updateCustomerProfile = asyncHandler(async (req, res) => {
 	const customer = await Customer.findById(req.customer._id);
 
 	if (customer) {
-		customer.firstName = req.body.firstName || customer.firstName;
-		customer.lastName = req.body.lastName || customer.lastName;
-		customer.telephone = req.body.telephone || customer.telephone;
-		customer.address = req.body.address || customer.address;
-		customer.gender = req.body.gender || customer.gender;
-		customer.country = req.body.country || customer.country;
-		customer.email = req.body.email || customer.email;
-		customer.pic = req.body.pic || customer.pic;
-		customer.password = req.body.password || customer.password;
-		
+		// Sanitize the inputs
+		customer.firstName = sanitizeInput(req.body.firstName) || customer.firstName;
+		customer.lastName = sanitizeInput(req.body.lastName) || customer.lastName;
+		customer.telephone = sanitizeInput(req.body.telephone) || customer.telephone;
+		customer.address = sanitizeInput(req.body.address) || customer.address;
+		customer.gender = sanitizeInput(req.body.gender) || customer.gender;
+		customer.country = sanitizeInput(req.body.country) || customer.country;
+		customer.email = sanitizeInput(req.body.email) || customer.email;
+		customer.pic = sanitizeInput(req.body.pic) || customer.pic;
+
+		// Update password if provided and hash it
+		if (req.body.password) {
+			customer.password = await bcrypt.hash(req.body.password, 10);
+		}
+
 		const updatedCustomer = await customer.save();
 
 		res.json({
@@ -122,26 +157,30 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 			regDate: updatedCustomer.regDate,
 		});
 	} else {
-		res.status(404);
-		throw new Error("Customer Not Found !");
+		res.status(404).json({ message: "Customer Not Found!" });
 	}
 });
 
-//update customer profile by admin
+// Update customer profile by admin
 const updateCustomerProfileById = asyncHandler(async (req, res) => {
 	const customer = await Customer.findById(req.params._id);
 
 	if (customer) {
-		customer.firstName = req.body.firstName || customer.firstName;
-		customer.lastName = req.body.lastName || customer.lastName;
-		customer.telephone = req.body.telephone || customer.telephone;
-		customer.address = req.body.address || customer.address;
-		customer.gender = req.body.gender || customer.gender;
-		customer.country = req.body.country || customer.country;
-		customer.email = req.body.email || customer.email;
-		customer.pic = req.body.pic || customer.pic;
-		customer.password = req.body.password || customer.password;
-		
+		// Sanitize the inputs
+		customer.firstName = sanitizeInput(req.body.firstName) || customer.firstName;
+		customer.lastName = sanitizeInput(req.body.lastName) || customer.lastName;
+		customer.telephone = sanitizeInput(req.body.telephone) || customer.telephone;
+		customer.address = sanitizeInput(req.body.address) || customer.address;
+		customer.gender = sanitizeInput(req.body.gender) || customer.gender;
+		customer.country = sanitizeInput(req.body.country) || customer.country;
+		customer.email = sanitizeInput(req.body.email) || customer.email;
+		customer.pic = sanitizeInput(req.body.pic) || customer.pic;
+
+		// Update password if provided and hash it
+		if (req.body.password) {
+			customer.password = await bcrypt.hash(req.body.password, 10);
+		}
+
 		const updatedCustomer = await customer.save();
 
 		res.json({
@@ -157,34 +196,31 @@ const updateCustomerProfileById = asyncHandler(async (req, res) => {
 			regDate: updatedCustomer.regDate,
 		});
 	} else {
-		res.status(404);
-		throw new Error("Customer Not Found !");
+		res.status(404).json({ message: "Customer Not Found!" });
 	}
 });
 
-// delete customer profile by  customer
+// Delete customer profile by customer
 const deleteCustomerProfile = asyncHandler(async (req, res) => {
 	const customer = await Customer.findById(req.customer._id);
 
 	if (customer) {
 		await customer.deleteOne();
-		res.json({ message: "Customer Removed !" });
+		res.json({ message: "Customer Removed!" });
 	} else {
-		res.status(404);
-		throw new Error("Customer not Found !");
+		res.status(404).json({ message: "Customer not Found!" });
 	}
 });
 
-// delete customer profile by admin
+// Delete customer profile by admin
 const deleteCustomerProfileById = asyncHandler(async (req, res) => {
 	const customer = await Customer.findById(req.params._id);
 
 	if (customer) {
 		await customer.deleteOne();
-		res.json({ message: "Customer Removed !" });
+		res.json({ message: "Customer Removed!" });
 	} else {
-		res.status(404);
-		throw new Error("Customer not Found !");
+		res.status(404).json({ message: "Customer not Found!" });
 	}
 });
 
