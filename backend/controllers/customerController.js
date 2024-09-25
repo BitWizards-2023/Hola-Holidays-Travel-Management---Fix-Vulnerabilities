@@ -1,5 +1,10 @@
 const asyncHandler = require("express-async-handler");
 const Customer = require("../models/customerModel");
+const generateToken = require("../utils/generateToken");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+
+const SESSIONS = new Map();
 
 // register  customer profile
 const registerCustomer = asyncHandler(async (req, res) => {
@@ -23,10 +28,25 @@ const registerCustomer = asyncHandler(async (req, res) => {
 		pic,
 	});
 
-	const addedCustomer =await customer.save();
+	const salt = await bcrypt.genSalt(10);
+
+	customer.password = await bcrypt.hash(password, salt);
+
+	await customer.save();
 
 	if (customer) {
-		res.status(201).json(addedCustomer);
+		res.status(201).json({
+			_id: customer._id,
+			firstName: customer.firstName,
+			lastName: customer.lastName,
+			telephone: customer.telephone,
+			address: customer.address,
+			gender: customer.gender,
+			country: customer.country,
+			email: customer.email,
+			pic: customer.pic,
+			token: generateToken(customer._id),
+		});
 	} else {
 		res.status(400);
 		throw new Error("Customer Registration Failed !");
@@ -43,10 +63,25 @@ const authCustomer = asyncHandler(async (req, res) => {
 		res.status(400);
 		throw new Error("Invalid Email or Password");
 	}
-	if (!(password === customer.password)) {
+
+	const isMatch = await bcrypt.compare(password, customer.password);
+
+	if (!isMatch) {
 		res.status(400);
 		throw new Error("Invalid Email or Password");
 	} else {
+		const sessionId = crypto.randomUUID();
+		SESSIONS.set(sessionId, customer._id);
+		const expirationDate = new Date();
+		expirationDate.setDate(expirationDate.getDate() + 2);
+
+		//Set the cookie
+		res.cookie("sessionId", sessionId, {
+			httpOnly: false,
+			withCredentials: true,
+			expires: expirationDate,
+		});
+
 		res.status(201).json({
 			_id: customer._id,
 			firstName: customer.firstName,
@@ -58,6 +93,7 @@ const authCustomer = asyncHandler(async (req, res) => {
 			email: customer.email,
 			pic: customer.pic,
 			regDate: customer.regDate,
+			token: generateToken(customer._id),
 		});
 	}
 });
@@ -105,8 +141,10 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 		customer.country = req.body.country || customer.country;
 		customer.email = req.body.email || customer.email;
 		customer.pic = req.body.pic || customer.pic;
-		customer.password = req.body.password || customer.password;
-		
+		if (req.body.password) {
+			const salt = await bcrypt.genSalt(10);
+			customer.password = await bcrypt.hash(req.body.password, salt);
+		}
 		const updatedCustomer = await customer.save();
 
 		res.json({
@@ -120,6 +158,7 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 			email: updatedCustomer.email,
 			pic: updatedCustomer.pic,
 			regDate: updatedCustomer.regDate,
+			token: generateToken(updatedCustomer._id),
 		});
 	} else {
 		res.status(404);
@@ -140,8 +179,10 @@ const updateCustomerProfileById = asyncHandler(async (req, res) => {
 		customer.country = req.body.country || customer.country;
 		customer.email = req.body.email || customer.email;
 		customer.pic = req.body.pic || customer.pic;
-		customer.password = req.body.password || customer.password;
-		
+		if (req.body.password) {
+			const salt = await bcrypt.genSalt(10);
+			customer.password = await bcrypt.hash(req.body.password, salt);
+		}
 		const updatedCustomer = await customer.save();
 
 		res.json({
@@ -155,6 +196,7 @@ const updateCustomerProfileById = asyncHandler(async (req, res) => {
 			email: updatedCustomer.email,
 			pic: updatedCustomer.pic,
 			regDate: updatedCustomer.regDate,
+			token: generateToken(updatedCustomer._id),
 		});
 	} else {
 		res.status(404);
