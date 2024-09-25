@@ -31,8 +31,8 @@ const AdminViewScreen = ({ history }) => {
 		history.push("/");
 	};
 
-	const editHandler = async (e) => {
-		e.preventDefault();
+	// No need to call e.preventDefault() for onClick
+	const editHandler = () => {
 		history.push("/admin-edit");
 	};
 
