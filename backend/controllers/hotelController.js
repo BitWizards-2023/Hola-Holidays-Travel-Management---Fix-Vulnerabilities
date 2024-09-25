@@ -1,5 +1,5 @@
 const Hotel = require("../models/hotelModel");
-//const asyncHandler = require("express-async-handler");
+const asyncHandler = require("express-async-handler");
 
 // Utility function to sanitize input by removing unwanted characters ($ and .)
 const sanitizeInput = (input) => {
