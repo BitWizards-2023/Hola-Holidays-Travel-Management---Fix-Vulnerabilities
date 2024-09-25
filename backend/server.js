@@ -3,6 +3,7 @@ const session = require("express-session");
 const dotenv = require("dotenv");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const app = express();
 const connectDB = require("./config/db");
 const adminRoutes = require("./routes/adminRoutes");
@@ -15,9 +16,10 @@ const roomRoutes = require("./routes/roomRoutes");
 const reservationRoutes = require("./routes/reservationRoutes");
 const authRoutes = require('./routes/authRoutes');
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
-const passport = require('passport');
+const passport = require("passport");
 require('./config/passportConfig');
 
+const helmet = require("helmet");
 
 dotenv.config();
 connectDB();
@@ -27,11 +29,9 @@ app.use(cors({
 	credentials: true, // allow credentials (cookies) to be sent
 }));
 
-
 app.get("/", (req, res) => {
 	res.send("API is Running");
 });
-
 
 // Session middleware
 app.use(session({
@@ -48,9 +48,31 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
+//fix the CSP header vulnerability
+app.use(helmet());
+
+app.use(
+	helmet.contentSecurityPolicy({
+		directives: {
+			defaultSrc: ["'self'"],
+			scriptSrc: ["'self'", "trusted-scripts.com"],
+			styleSrc: ["'self'", "trusted-styles.com"],
+		},
+		reportOnly: true,
+	})
+);
+
+// fix missing anti-clickjacking header
+app.use((req, res, next) => {
+	res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
+	res.setHeader("X-Frame-Options", "DENY");
+	next();
+});
+
+app.use(cookieParser());
+
 // Routes (including auth routes)
 app.use('/', authRoutes);
-
 app.use("/user/admin", adminRoutes);
 app.use("/user/customer", customerRoutes);
 app.use("/sites", siteRoutes);
@@ -64,4 +86,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = 5001 || 5002;
+
 app.listen(PORT, console.log(`Server Started on port ${PORT}..`));
