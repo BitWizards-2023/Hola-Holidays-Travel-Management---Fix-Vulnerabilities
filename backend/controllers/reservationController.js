@@ -3,34 +3,60 @@ const Hotel = require("../models/hotelModel");
 const Room = require("../models/roomModel");
 const asyncHandler = require("express-async-handler");
 
-const getReservations = asyncHandler(async (req, res) => {
-	const items = await Reservation.find({ customer: req.params.id });
-	res.json(items);
-});
-
-const getReservationsForEachHotel = asyncHandler(async (req, res) => {
-	const items = await Reservation.find({ hotel: req.params.id });
-	res.json(items);
-});
-
-const getTotal = asyncHandler(async (req, res) => {
-	var loopData = {};
-	var loopData = new Object();
-	const items = await Reservation.find({ customer: req.params.id });
-	var total = 0;
-	var i = 0;
-	while (i < items.length) {
-		total = total + items[i].price * items[i].noOfDates * items[i].noOfRooms;
-		i++;
+// Utility function to sanitize input by removing unwanted characters ($ and .)
+const sanitizeInput = (input) => {
+	if (typeof input === "string") {
+		return input.replace(/[$.]/g, "").trim(); // Removes `$` and `.` characters and trims the input
 	}
-	var loopData = {
+	if (Array.isArray(input)) {
+		return input.map((item) => sanitizeInput(item)); // Recursively sanitize each item if input is an array
+	}
+	return input;
+};
+
+// Get reservations for a specific customer
+const getReservations = asyncHandler(async (req, res) => {
+	const sanitizedCustomerId = sanitizeInput(req.params.id);
+	const items = await Reservation.find({ customer: sanitizedCustomerId });
+	res.json(items);
+});
+
+// Get reservations for a specific hotel
+const getReservationsForEachHotel = asyncHandler(async (req, res) => {
+	const sanitizedHotelId = sanitizeInput(req.params.id);
+	const items = await Reservation.find({ hotel: sanitizedHotelId });
+	res.json(items);
+});
+
+// Calculate total price for reservations
+const getTotal = asyncHandler(async (req, res) => {
+	const sanitizedCustomerId = sanitizeInput(req.params.id);
+	const items = await Reservation.find({ customer: sanitizedCustomerId });
+	let total = 0;
+
+	items.forEach((item) => {
+		total += item.price * item.noOfDates * item.noOfRooms;
+	});
+
+	const loopData = {
 		totalPrice: total,
 	};
 	res.json(loopData);
 });
 
+// Add a new reservation
 const addReservation = asyncHandler(async (req, res) => {
-	const { customer, customerName, customerEmail, room, checkInDate, checkOutDate, noOfDates, noOfRooms } = req.body;
+	let { customer, customerName, customerEmail, room, checkInDate, checkOutDate, noOfDates, noOfRooms } = req.body;
+
+	// Sanitize all inputs
+	customer = sanitizeInput(customer);
+	customerName = sanitizeInput(customerName);
+	customerEmail = sanitizeInput(customerEmail);
+	room = sanitizeInput(room);
+	checkInDate = sanitizeInput(checkInDate);
+	checkOutDate = sanitizeInput(checkOutDate);
+	noOfDates = sanitizeInput(noOfDates);
+	noOfRooms = sanitizeInput(noOfRooms);
 
 	if (
 		!customer ||
@@ -45,34 +71,28 @@ const addReservation = asyncHandler(async (req, res) => {
 		res.status(400);
 		throw new Error("Failed adding reservation");
 	} else {
-		const item = await Reservation.findOne({
-			customer: customer,
-			room: room,
-		});
+		const existingReservation = await Reservation.findOne({ customer, room });
 
-		if (item) {
+		if (existingReservation) {
 			throw new Error("Already has a reservation");
 		} else {
-			const hotelRoom = await Room.findOne({
-				_id: room,
-			});
+			const hotelRoom = await Room.findById(room);
 
 			if (hotelRoom) {
-				hotelRoom.availability = hotelRoom.availability - 1;
-				const updatedRoom = await hotelRoom.save();
+				hotelRoom.availability -= 1;
+				await hotelRoom.save();
 			}
 
-			const roomItem = await Room.findById(room);
-			const roomName = roomItem.roomType;
-			const hotel = roomItem.hotel;
-			const hotelItem = await Hotel.findOne({ _id: hotel.toString() });
+			const hotelItem = await Hotel.findById(hotelRoom.hotel);
 			const hotelName = hotelItem.hotelName;
-			const price = roomItem.price;
+			const roomName = hotelRoom.roomType;
+			const price = hotelRoom.price;
+
 			const reservation = new Reservation({
 				customer,
 				customerName,
 				customerEmail,
-				hotel,
+				hotel: hotelRoom.hotel,
 				hotelName,
 				room,
 				roomName,
@@ -84,72 +104,58 @@ const addReservation = asyncHandler(async (req, res) => {
 			});
 
 			const createdReservation = await reservation.save();
-
 			res.status(201).json(createdReservation);
 		}
 	}
 });
 
+// Update reservation details
 const updateReservation = asyncHandler(async (req, res) => {
 	const { noOfRooms } = req.body;
+	const sanitizedReservationId = sanitizeInput(req.params.id);
 
-	const reservation = await Reservation.findById(req.params.id);
+	const reservation = await Reservation.findById(sanitizedReservationId);
+	const room = await Room.findById(reservation.room);
 
-	const room = await Room.findOne({ _id: reservation.room.toString() });
-	var previousQuantity = reservation.noOfRooms;
+	const previousQuantity = reservation.noOfRooms;
 
-	if (room.availability <= 0) {
-		if (previousQuantity > noOfRooms) {
-			room.availability = room.availability + 1;
-			const updatedRoom = await room.save();
+	if (room.availability <= 0 && previousQuantity < noOfRooms) {
+		throw new Error("All rooms are booked");
+	}
 
-			if (reservation) {
-				reservation.noOfRooms = noOfRooms;
+	if (previousQuantity > noOfRooms) {
+		room.availability += previousQuantity - noOfRooms;
+	} else if (previousQuantity < noOfRooms) {
+		room.availability -= noOfRooms - previousQuantity;
+	}
 
-				const updatedReservation = await reservation.save();
-				res.json(updatedReservation);
-			} else {
-				res.status(404);
-				throw new Error("Reservation not found");
-			}
-		} else if (previousQuantity < quantity) {
-			throw new Error("All Booked");
-		}
+	await room.save();
+
+	if (reservation) {
+		reservation.noOfRooms = noOfRooms;
+		const updatedReservation = await reservation.save();
+		res.json(updatedReservation);
 	} else {
-		if (previousQuantity > noOfRooms) {
-			room.availability = room.availability + 1;
-			const updatedRoom = await room.save();
-		} else if (previousQuantity < noOfRooms) {
-			room.availability = room.availability - 1;
-			const updatedRoom = await room.save();
-		}
-
-		if (reservation) {
-			reservation.noOfRooms = noOfRooms;
-
-			const updatedReservation = await reservation.save();
-			res.json(updatedReservation);
-		} else {
-			res.status(404);
-			throw new Error("Reservation not found");
-		}
+		res.status(404);
+		throw new Error("Reservation not found");
 	}
 });
 
+// Delete a reservation
 const deleteReservation = asyncHandler(async (req, res) => {
-	const reservation = await Reservation.findById(req.params.id);
-
-	const room = await Room.findOne({ _id: reservation.room });
-	const availability = reservation.noOfRooms;
+	const sanitizedReservationId = sanitizeInput(req.params.id);
+	const reservation = await Reservation.findById(sanitizedReservationId);
 
 	if (reservation) {
-		await reservation.deleteOne();
-		room.availability = room.availability + availability;
+		const room = await Room.findById(reservation.room);
+		room.availability += reservation.noOfRooms;
 		await room.save();
+
+		await reservation.deleteOne();
 		res.json({ message: "Reservation Removed" });
 	} else {
 		res.status(404);
-		throw new Error("Reservation not Found");
+		throw new Error("Reservation not found");
 	}
 });
 
