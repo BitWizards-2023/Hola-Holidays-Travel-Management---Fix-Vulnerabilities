@@ -1,6 +1,10 @@
 const asyncHandler = require("express-async-handler");
 const Admin = require("../models/adminModel");
 const bcrypt = require("bcrypt");
+const generateToken = require("../utils/generateToken");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const SESSIONS = new Map();
 
 // Utility function to sanitize input and prevent NoSQL injection
 const sanitizeInput = (input) => {
@@ -63,10 +67,32 @@ const authAdmin = asyncHandler(async (req, res) => {
 		return res.status(400).json({ message: "Invalid Email or Password" });
 	}
 
-	// Compare the provided password with the hashed password
 	const isMatch = await bcrypt.compare(password, admin.password);
+
 	if (!isMatch) {
-		return res.status(400).json({ message: "Invalid Email or Password" });
+		res.status(400);
+		throw new Error("Invalid Email or Password");
+	} else {
+		const sessionId = crypto.randomUUID();
+		SESSIONS.set(sessionId, admin._id);
+		const expirationDate = new Date();
+		expirationDate.setDate(expirationDate.getDate() + 2);
+		//Set the cookie
+		res.cookie("sessionId", sessionId, {
+			httpOnly: false,
+			withCredentials: true,
+			expires: expirationDate,
+		});
+		res.status(201).json({
+			_id: admin._id,
+			name: admin.name,
+			telephone: admin.telephone,
+			address: admin.address,
+			email: admin.email,
+			password: admin.password,
+			pic: admin.pic,
+			token: generateToken(admin._id),
+		});
 	}
 
 	// Successful authentication, return admin details
@@ -97,18 +123,15 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 	const admin = await Admin.findById(req.admin._id);
 
 	if (admin) {
-		// Sanitize the inputs to avoid potential injection attacks
-		admin.name = sanitizeInput(req.body.name) || admin.name;
-		admin.telephone = sanitizeInput(req.body.telephone) || admin.telephone;
-		admin.address = sanitizeInput(req.body.address) || admin.address;
-		admin.email = sanitizeInput(req.body.email) || admin.email;
-		admin.pic = sanitizeInput(req.body.pic) || admin.pic;
-
-		// Update password if provided
+		admin.name = req.body.name || admin.name;
+		admin.telephone = req.body.telephone || admin.telephone;
+		admin.address = req.body.address || admin.address;
+		admin.email = req.body.email || admin.email;
+		admin.pic = req.body.pic || admin.pic;
 		if (req.body.password) {
-			admin.password = await bcrypt.hash(req.body.password, 10);
+			const salt = await bcrypt.genSalt(10);
+			admin.password = await bcrypt.hash(req.body.password, salt);
 		}
-
 		const updatedAdmin = await admin.save();
 
 		res.status(200).json({
@@ -119,6 +142,7 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 			address: updatedAdmin.address,
 			email: updatedAdmin.email,
 			pic: updatedAdmin.pic,
+			token: generateToken(updatedAdmin._id),
 		});
 	} else {
 		res.status(404).json({ message: "Admin Not Found!" });

@@ -72,6 +72,7 @@ const customerSchema = new mongoose.Schema(
 			type: Date, // Use the Date type instead of String for dates
 			default: Date.now, // Automatically set the registration date
 		},
+		facebookId: { type: String },
 	},
 	{
 		timestamps: true,
