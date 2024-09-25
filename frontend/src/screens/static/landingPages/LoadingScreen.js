@@ -6,7 +6,6 @@ import MainScreen from "../../../components/MainScreen";
 const LoadingScreen = () => {
     const history = useHistory();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [loading, setLoading] = useState(true); // Added loading state
 
     // Function to check authentication
     const checkAuthentication = async () => {
@@ -29,54 +28,32 @@ const LoadingScreen = () => {
             }
         } catch (error) {
             console.error("Authentication error:", error);
-            setIsAuthenticated(false); // Set authentication to false in case of error
-        } finally {
-            setLoading(false); // Stop loading once the check is complete
         }
     };
 
     useEffect(() => {
-        // First check if customerInfo already exists in localStorage
-        const storedCustomerInfo = localStorage.getItem("customerInfo");
-        if (storedCustomerInfo) {
-            console.log("User info found in localStorage:", JSON.parse(storedCustomerInfo));
-            setIsAuthenticated(true);
-            setLoading(false);  // Stop loading since we found the info
-        } else {
-            checkAuthentication();
-        }
+        checkAuthentication();
     }, []);
 
     useEffect(() => {
-        if (!loading) {
+        if (isAuthenticated) {
             const timeout = setTimeout(() => {
-                if (isAuthenticated) {
-                    console.log("User authenticated, redirecting...");
-                    history.push("/customer");
-                } else {
-                    console.log("User not authenticated, staying on login.");
-                    history.push("/login");  // Redirect to login if not authenticated
-                }
-            }, 1000);  // Add slight delay for better UX
+                window.location.href = "http://localhost:3000/customer";
+            }, 1000);  // Add slight delay after authentication
 
             return () => clearTimeout(timeout);
         }
-    }, [isAuthenticated, loading, history]);
+    }, [isAuthenticated, history]);
 
-    // Show loader while checking authentication
-    if (loading) {
-        return (
-            <div style={{ background: "black" }}>
-                <MainScreen>
-                    <div className="loading-screen">
-                        <div className="loader"></div>
-                    </div>
-                </MainScreen>
-            </div>
-        );
-    }
-
-    return null;  // Return nothing once loading is complete
+    return (
+        <div style={{ background: "black" }}>
+            <MainScreen>
+                <div className="loading-screen">
+                    <div className="loader"></div>
+                </div>
+            </MainScreen>
+        </div>
+    );
 };
 
 export default LoadingScreen;
