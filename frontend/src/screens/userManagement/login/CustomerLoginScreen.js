@@ -6,14 +6,15 @@ import { useDispatch, useSelector } from "react-redux";
 import Loading from "../../../components/Loading";
 import ErrorMessage from "../../../components/ErrorMessage";
 import { customerLogin } from "../../../actions/userManagementActions/customerActions";
-import { FaGoogle, FaFacebook } from 'react-icons/fa'; // Import icons from react-icons
+import { useGoogleLogin } from "@react-oauth/google";
+import axios from "axios";
 
 const CustomerLogin = ({ history }) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [message, setMessage] = useState(null);
 
 	const googleUrl = "http://localhost:5001/auth/google";
-	const facebookUrl = "http://localhost:5001/auth/facebook";
 
 	const dispatch = useDispatch();
 
@@ -39,12 +40,37 @@ const CustomerLogin = ({ history }) => {
 		}
 	}, [history, customerInfo]);
 
+	// Function to validate email format
+	const validateEmail = (email) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return re.test(String(email).toLowerCase());
+	};
+
 	const submitHandler = async (e) => {
 		e.preventDefault();
-		await dispatch(customerLogin(email, password));
+
+		// Input sanitization: Trim whitespaces
+		const trimmedEmail = email.trim();
+		const trimmedPassword = password.trim();
+
+		// Email validation
+		if (!validateEmail(trimmedEmail)) {
+			setMessage("Invalid email format");
+			return;
+		}
+
+		// Password validation (optional: ensure password is at least 6 characters long)
+		if (trimmedPassword.length < 6) {
+			setMessage("Password must be at least 6 characters long");
+			return;
+		}
+
+		// Dispatch login action
+		await dispatch(customerLogin(trimmedEmail, trimmedPassword));
 
 		setEmail("");
 		setPassword("");
+		setMessage(null);
 	};
 
 	return (
@@ -66,10 +92,11 @@ const CustomerLogin = ({ history }) => {
 				>
 					<br />
 					<div className="loginContainer">
+						{message && <ErrorMessage variant="danger">{message}</ErrorMessage>}
 						{error && <ErrorMessage variant="danger">{error}</ErrorMessage>}
 						{loading && <Loading />}
 						{success &&
-							setTimeout(function () {
+							setTimeout(() => {
 								history.push("/customer");
 							}, 2000)}
 						<Form onSubmit={submitHandler}>
@@ -93,49 +120,14 @@ const CustomerLogin = ({ history }) => {
 								/>
 							</Form.Group>
 							<br />
+							<Button variant="primary" type="submit">
+								Submit
+							</Button>
 
-							{/* Flexbox container for buttons */}
-							<div style={{ display: 'flex', justifyContent: 'space-between' }}>
-								<Button variant="primary"
-									style={{
-										color: 'white',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										gap: '8px', // Add some space between icon and text
-									}} type="submit">
-									Submit
-								</Button>
-
-								<Button
-									onClick={onClickUrl(`${googleUrl}`)}
-									style={{
-										backgroundColor: '#DB4437',
-										color: 'white',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										gap: '8px', // Add some space between icon and text
-									}}
-								>
-									<FaGoogle /> Google Auth
-								</Button>
-
-								<Button
-									onClick={onClickUrl(`${facebookUrl}`)}
-									style={{
-										backgroundColor: '#4267B2',
-										color: 'white',
-										display: 'flex',
-										alignItems: 'center',
-										justifyContent: 'center',
-										gap: '8px', // Add some space between icon and text
-									}}
-								>
-									<FaFacebook /> Facebook Auth
-								</Button>
-							</div>
+							<br></br>
+							<br></br>
 						</Form>
+						<Button onClick={onClickUrl(`${googleUrl}`)}>Google Auth</Button>
 					</div>
 				</Card>
 			</MainScreen>

@@ -24,10 +24,8 @@ function CustomerRegisterScreen() {
 	const [picMessage, setPicMessage] = useState(null);
 
 	const dispatch = useDispatch();
-
 	const customerRegistration = useSelector((state) => state.customerRegistration);
 	const { loading, error, success } = customerRegistration;
-
 	const history = useHistory();
 
 	const resetHandler = () => {
@@ -57,17 +55,64 @@ function CustomerRegisterScreen() {
 		setConfirmPassword("test");
 	};
 
+	// Function to validate email using a regex pattern
+	const validateEmail = (email) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return re.test(String(email).toLowerCase());
+	};
+
+	// Function to validate phone numbers (only numbers and some symbols allowed)
+	const validatePhone = (phone) => {
+		const re = /^[\d\s()+-]+$/;
+		return re.test(phone);
+	};
+
 	const submitHandler = async (e) => {
 		e.preventDefault();
 
+		// Check for missing fields
 		if (!firstName || !lastName || !telephone || !address || !gender || !country || !email || !password || !pic) return;
+
+		// Check if passwords match
 		if (password !== confirmpassword) {
 			setMessage("Passwords do not match");
-		} else {
-			dispatch(await customerRegister(firstName, lastName, telephone, address, gender, country, email, password, pic));
-			await dispatch({ type: CUSTOMER_REGISTER_AFTER_SUCCESS, payload: null });
-			resetHandler();
+			return;
 		}
+
+		// Email validation
+		if (!validateEmail(email)) {
+			setMessage("Invalid email address");
+			return;
+		}
+
+		// Phone number validation
+		if (!validatePhone(telephone)) {
+			setMessage("Invalid telephone number");
+			return;
+		}
+
+		// Password strength check (optional, can modify as per needs)
+		if (password.length < 6) {
+			setMessage("Password should be at least 6 characters long");
+			return;
+		}
+
+		// Proceed with registration
+		dispatch(
+			await customerRegister(
+				firstName.trim(),
+				lastName.trim(),
+				telephone.trim(),
+				address.trim(),
+				gender,
+				country.trim(),
+				email.trim(),
+				password,
+				pic
+			)
+		);
+		await dispatch({ type: CUSTOMER_REGISTER_AFTER_SUCCESS, payload: null });
+		resetHandler();
 	};
 
 	const postDetails = (pics) => {
@@ -75,7 +120,10 @@ function CustomerRegisterScreen() {
 			return setPicMessage("Please Select an Image");
 		}
 		setPicMessage(null);
-		if (pics.type === "image/jpeg" || pics.type === "image/png" || pics.type === "image/jpg") {
+
+		// Validate image type securely
+		const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+		if (pics && allowedTypes.includes(pics.type)) {
 			const data = new FormData();
 			data.append("file", pics);
 			data.append("upload_preset", "HolaHolidaysCustomerProfile");
@@ -92,7 +140,7 @@ function CustomerRegisterScreen() {
 					console.log(err);
 				});
 		} else {
-			return setPicMessage("Please Select an Image");
+			return setPicMessage("Please Select a Valid Image (JPEG/PNG)");
 		}
 	};
 
@@ -120,10 +168,7 @@ function CustomerRegisterScreen() {
 							{error && <ErrorMessage variant="danger">{error}</ErrorMessage>}
 							{message && <ErrorMessage variant="danger">{message}</ErrorMessage>}
 							{loading && <Loading />}
-							{success &&
-								setTimeout(function () {
-									history.push("/customer-login");
-								}, 2000)}
+							{success && setTimeout(() => history.push("/customer-login"), 2000)}
 						</div>
 						<br></br>
 						<Row className="CustomerProfileContainer">
@@ -165,13 +210,7 @@ function CustomerRegisterScreen() {
 									<Form.Group controlId="customerFormBasicAddress">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Address</Form.Label>
 										<textarea
-											style={{
-												width: "100%",
-												fontSize: "16px",
-												borderRadius: "5px",
-												padding: "5px",
-												border: "none",
-											}}
+											style={{ width: "100%", fontSize: "16px", borderRadius: "5px", padding: "5px", border: "none" }}
 											value={address}
 											onChange={(e) => setAddress(e.target.value)}
 											placeholder="Enter your address"
@@ -192,8 +231,8 @@ function CustomerRegisterScreen() {
 											required
 										>
 											<option>Select Gender</option>
-											<option value={gender.Male}>Male</option>
-											<option value={gender.Female}>Female</option>
+											<option value="Male">Male</option>
+											<option value="Female">Female</option>
 										</select>
 									</div>
 									<br></br>
@@ -213,7 +252,7 @@ function CustomerRegisterScreen() {
 										<Form.Control
 											type="email"
 											value={email}
-											placeholder="Enter  your email address"
+											placeholder="Enter your email address"
 											onChange={(e) => setEmail(e.target.value)}
 											required
 										/>
@@ -253,47 +292,20 @@ function CustomerRegisterScreen() {
 										/>
 									</Form.Group>
 									<br></br>
-									<Button
-										variant="primary"
-										type="submit"
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="primary" type="submit" style={{ fontSize: 15, marginTop: 10 }}>
 										Register
 									</Button>
 									&emsp;
-									<Button
-										variant="danger"
-										onClick={resetHandler}
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="danger" onClick={resetHandler} style={{ fontSize: 15, marginTop: 10 }}>
 										Reset
 									</Button>
 									&emsp;
-									<Button
-										variant="info"
-										onClick={demoHandler}
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="info" onClick={demoHandler} style={{ fontSize: 15, marginTop: 10 }}>
 										Demo
 									</Button>
 								</Form>
 							</Col>
-							<Col
-								style={{
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
+							<Col style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
 								<img
 									src={pic}
 									alt={firstName}

@@ -10,6 +10,7 @@ import { adminLogin } from "../../../actions/userManagementActions/adminActions"
 const AdminLogin = ({ history }) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [message, setMessage] = useState(null);
 
 	const dispatch = useDispatch();
 
@@ -22,12 +23,36 @@ const AdminLogin = ({ history }) => {
 		}
 	}, [history, adminInfo]);
 
+	// Function to validate email format
+	const validateEmail = (email) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return re.test(String(email).toLowerCase());
+	};
+
 	const submitHandler = async (e) => {
 		e.preventDefault();
-		await dispatch(adminLogin(email, password));
+
+		// Input sanitization: Trim whitespaces
+		const trimmedEmail = email.trim();
+		const trimmedPassword = password.trim();
+
+		// Email validation
+		if (!validateEmail(trimmedEmail)) {
+			setMessage("Invalid email format");
+			return;
+		}
+
+		// Password validation (optional: set a minimum password length)
+		if (trimmedPassword.length < 6) {
+			setMessage("Password must be at least 6 characters");
+			return;
+		}
+
+		await dispatch(adminLogin(trimmedEmail, trimmedPassword));
 
 		setEmail("");
 		setPassword("");
+		setMessage(null);
 	};
 
 	return (
@@ -49,10 +74,11 @@ const AdminLogin = ({ history }) => {
 				>
 					<br></br>
 					<div className="loginContainer">
+						{message && <ErrorMessage variant="danger">{message}</ErrorMessage>}
 						{error && <ErrorMessage variant="danger">{error}</ErrorMessage>}
 						{loading && <Loading />}
 						{success &&
-							setTimeout(function () {
+							setTimeout(() => {
 								history.push("/admin");
 							}, 2000)}
 						<Form onSubmit={submitHandler}>

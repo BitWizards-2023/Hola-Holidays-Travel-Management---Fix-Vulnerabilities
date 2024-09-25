@@ -36,12 +36,27 @@ const CustomerEditByAdminScreen = ({ match }) => {
 
 	const history = useHistory();
 
+	// Function to validate email format
+	const validateEmail = (email) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return re.test(String(email).toLowerCase());
+	};
+
+	// Function to validate phone number
+	const validatePhone = (phone) => {
+		const re = /^[\d\s()+-]+$/;
+		return re.test(phone);
+	};
+
 	const postDetails = (pics) => {
 		if (pics === "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg") {
 			return setPicMessage("Please Select an Image");
 		}
 		setPicMessage(null);
-		if (pics.type === "image/jpeg" || pics.type === "image/png" || pics.type === "image/jpg") {
+
+		// Validate the image MIME type
+		const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+		if (pics && allowedTypes.includes(pics.type)) {
 			const data = new FormData();
 			data.append("file", pics);
 			data.append("upload_preset", "customerProfile");
@@ -58,32 +73,59 @@ const CustomerEditByAdminScreen = ({ match }) => {
 					console.log(err);
 				});
 		} else {
-			return setPicMessage("Please Select an Image");
+			return setPicMessage("Please Select a Valid Image (JPEG/PNG)");
 		}
 	};
 
 	const submitHandler = async (e) => {
 		e.preventDefault();
 
-		if (password !== confirmpassword) {
-			setMessage("Passwords do not match");
-		} else {
-			await dispatch(
-				customerUpdateProfileById(
-					match.params.id,
-					firstName,
-					lastName,
-					telephone,
-					address,
-					gender,
-					country,
-					email,
-					password,
-					pic
-				)
-			);
-			await dispatch({ type: CUSTOMER_UPDATE_BY_ID_AFTER_SUCCESS, payload: null });
+		// Input sanitization: Trim whitespaces
+		const trimmedFirstName = firstName.trim();
+		const trimmedLastName = lastName.trim();
+		const trimmedEmail = email.trim();
+		const trimmedPassword = password.trim();
+		const trimmedConfirmPassword = confirmpassword.trim();
+
+		// Email validation
+		if (!validateEmail(trimmedEmail)) {
+			setMessage("Invalid email format");
+			return;
 		}
+
+		// Phone number validation
+		if (!validatePhone(telephone)) {
+			setMessage("Invalid telephone number");
+			return;
+		}
+
+		// Password validation (if passwords are provided)
+		if (trimmedPassword && trimmedPassword !== trimmedConfirmPassword) {
+			setMessage("Passwords do not match");
+			return;
+		}
+
+		// Password length validation (optional)
+		if (trimmedPassword && trimmedPassword.length < 6) {
+			setMessage("Password must be at least 6 characters");
+			return;
+		}
+
+		await dispatch(
+			customerUpdateProfileById(
+				match.params.id,
+				trimmedFirstName,
+				trimmedLastName,
+				telephone,
+				address,
+				gender,
+				country,
+				trimmedEmail,
+				trimmedPassword || undefined, // Only send password if it's set
+				pic
+			)
+		);
+		await dispatch({ type: CUSTOMER_UPDATE_BY_ID_AFTER_SUCCESS, payload: null });
 	};
 
 	useEffect(() => {
@@ -213,8 +255,8 @@ const CustomerEditByAdminScreen = ({ match }) => {
 											required
 										>
 											<option>Select Gender</option>
-											<option value={gender.Male}>Male</option>
-											<option value={gender.Female}>Female</option>
+											<option value="Male">Male</option>
+											<option value="Female">Female</option>
 										</select>
 									</div>
 									<br></br>
