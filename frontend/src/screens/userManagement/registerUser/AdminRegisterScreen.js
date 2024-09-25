@@ -21,10 +21,8 @@ function AdminRegisterScreen() {
 	const [picMessage, setPicMessage] = useState(null);
 
 	const dispatch = useDispatch();
-
 	const adminRegistration = useSelector((state) => state.adminRegistration);
 	const { loading, error, success } = adminRegistration;
-
 	const history = useHistory();
 
 	const resetHandler = () => {
@@ -48,17 +46,52 @@ function AdminRegisterScreen() {
 		setConfirmPassword("test");
 	};
 
+	// Validate email using regex
+	const validateEmail = (email) => {
+		const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+		return re.test(String(email).toLowerCase());
+	};
+
+	// Validate telephone number (allow numbers and special characters)
+	const validatePhone = (phone) => {
+		const re = /^[\d\s()+-]+$/;
+		return re.test(phone);
+	};
+
 	const submitHandler = async (e) => {
 		e.preventDefault();
 
+		// Ensure required fields are not empty
 		if (!name || !telephone || !address || !email || !password || !pic) return;
+
+		// Check if passwords match
 		if (password !== confirmpassword) {
 			setMessage("Passwords do not match");
-		} else {
-			dispatch(await adminRegister(name, telephone, address, email, password, pic));
-			await dispatch({ type: ADMIN_REGISTER_AFTER_SUCCESS, payload: null });
-			resetHandler();
+			return;
 		}
+
+		// Email validation
+		if (!validateEmail(email)) {
+			setMessage("Invalid email address");
+			return;
+		}
+
+		// Phone number validation
+		if (!validatePhone(telephone)) {
+			setMessage("Invalid telephone number");
+			return;
+		}
+
+		// Password strength validation (optional, adjust as needed)
+		if (password.length < 6) {
+			setMessage("Password should be at least 6 characters long");
+			return;
+		}
+
+		// Proceed with admin registration
+		dispatch(await adminRegister(name.trim(), telephone.trim(), address.trim(), email.trim(), password, pic));
+		await dispatch({ type: ADMIN_REGISTER_AFTER_SUCCESS, payload: null });
+		resetHandler();
 	};
 
 	const postDetails = (pics) => {
@@ -66,7 +99,10 @@ function AdminRegisterScreen() {
 			return setPicMessage("Please Select an Image");
 		}
 		setPicMessage(null);
-		if (pics.type === "image/jpeg" || pics.type === "image/png" || pics.type === "image/jpg") {
+
+		// Validate the image MIME type
+		const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+		if (pics && allowedTypes.includes(pics.type)) {
 			const data = new FormData();
 			data.append("file", pics);
 			data.append("upload_preset", "HolaHolidaysAdminProfile");
@@ -83,7 +119,7 @@ function AdminRegisterScreen() {
 					console.log(err);
 				});
 		} else {
-			return setPicMessage("Please Select an Image");
+			return setPicMessage("Please Select a Valid Image (JPEG/PNG)");
 		}
 	};
 
@@ -92,14 +128,7 @@ function AdminRegisterScreen() {
 			<br></br>
 			<MainScreen title="REGISTER - ADMIN">
 				<Link to="/admin">
-					<Button
-						variant="success"
-						style={{
-							float: "left",
-							marginTop: 5,
-							fontSize: 15,
-						}}
-					>
+					<Button variant="success" style={{ float: "left", marginTop: 5, fontSize: 15 }}>
 						{" "}
 						Back to Dashboard
 					</Button>
@@ -133,7 +162,7 @@ function AdminRegisterScreen() {
 						<Row className="AdminProfileContainer">
 							<Col md={6}>
 								<Form onSubmit={submitHandler}>
-									<Form.Group controlId="adminFirstName">
+									<Form.Group controlId="adminName">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Name</Form.Label>
 										<Form.Control
 											type="name"
@@ -158,13 +187,7 @@ function AdminRegisterScreen() {
 									<Form.Group controlId="adminFormBasicAddress">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Address</Form.Label>
 										<textarea
-											style={{
-												width: "100%",
-												fontSize: "16px",
-												borderRadius: "5px",
-												padding: "5px",
-												border: "none",
-											}}
+											style={{ width: "100%", fontSize: "16px", borderRadius: "5px", padding: "5px", border: "none" }}
 											value={address}
 											onChange={(e) => setAddress(e.target.value)}
 											placeholder="Enter your address"
@@ -178,7 +201,7 @@ function AdminRegisterScreen() {
 										<Form.Control
 											type="email"
 											value={email}
-											placeholder="Enter  your email address"
+											placeholder="Enter your email address"
 											onChange={(e) => setEmail(e.target.value)}
 											required
 										/>
@@ -218,47 +241,20 @@ function AdminRegisterScreen() {
 										/>
 									</Form.Group>
 									<br></br>
-									<Button
-										variant="primary"
-										type="submit"
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="primary" type="submit" style={{ fontSize: 15, marginTop: 10 }}>
 										Register
 									</Button>
 									&emsp;
-									<Button
-										variant="danger"
-										onClick={resetHandler}
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="danger" onClick={resetHandler} style={{ fontSize: 15, marginTop: 10 }}>
 										Reset
 									</Button>
 									&emsp;
-									<Button
-										variant="info"
-										onClick={demoHandler}
-										style={{
-											fontSize: 15,
-											marginTop: 10,
-										}}
-									>
+									<Button variant="info" onClick={demoHandler} style={{ fontSize: 15, marginTop: 10 }}>
 										Demo
 									</Button>
 								</Form>
 							</Col>
-							<Col
-								style={{
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "center",
-								}}
-							>
+							<Col style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
 								<img
 									src={pic}
 									alt={name}

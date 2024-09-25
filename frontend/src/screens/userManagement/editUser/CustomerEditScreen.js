@@ -73,8 +73,8 @@ const CustomerEditScreen = () => {
 	};
 
 	const submitHandler = async (e) => {
-		e.preventDefault();
-
+		e.preventDefault("ID ==" +customerInfo._id);
+		console.log()
 		if (password !== confirmpassword) {
 			setMessage("Passwords do not match");
 		} else {
@@ -88,7 +88,9 @@ const CustomerEditScreen = () => {
 				email,
 				password,
 				pic,
+				_id: customerInfo._id,
 			};
+			console.log(customerUpdatedInfo);
 			await dispatch(customerUpdateProfile(customerUpdatedInfo));
 
 			setTimeout(function () {
@@ -243,15 +245,17 @@ const CustomerEditScreen = () => {
 										<select
 											className="form-control"
 											id="customerGender"
-											value={gender}
-											onChange={(e) => setGender(e.target.value)}
+											value={gender} // This should still be dynamically set
+											onChange={(e) => setGender(e.target.value)} // Update gender when selected
 											required
 										>
 											<option>Select Gender</option>
-											<option value={gender.Male}>Male</option>
-											<option value={gender.Female}>Female</option>
+											{/* Use direct string values instead of gender.Male */}
+											<option value="Male">Male</option>
+											<option value="Female">Female</option>
 										</select>
 									</div>
+
 									<br></br>
 									<Form.Group controlId="customerFormBasicCountry">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Country</Form.Label>
@@ -275,26 +279,33 @@ const CustomerEditScreen = () => {
 										/>
 									</Form.Group>
 									<br></br>
-									<Form.Group controlId="formBasicPassword">
-										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Password</Form.Label>
-										<Form.Control
-											type="password"
-											value={password}
-											placeholder="Password"
-											onChange={(e) => setPassword(e.target.value)}
-										/>
-									</Form.Group>
+									{customerInfo && customerInfo.password !== 'google-oauth' && customerInfo.password !== 'facebook-oauth' && (
+										<>
+											<Form.Group controlId="formBasicPassword">
+												<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Password</Form.Label>
+												<Form.Control
+													type="password"
+													value={password}
+													placeholder="Password"
+													onChange={(e) => setPassword(e.target.value)}
+												/>
+											</Form.Group>
+											<br></br>
+											<Form.Group controlId="confirmPassword">
+												<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Confirm Password</Form.Label>
+												<Form.Control
+													type="password"
+													value={confirmpassword}
+													placeholder="Confirm Password"
+													onChange={(e) => setConfirmPassword(e.target.value)}
+												/>
+											</Form.Group>
+											<br></br>
+										</>
+									)}
+
 									<br></br>
-									<Form.Group controlId="confirmPassword">
-										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Confirm Password</Form.Label>
-										<Form.Control
-											type="password"
-											value={confirmpassword}
-											placeholder="Confirm Password"
-											onChange={(e) => setConfirmPassword(e.target.value)}
-										/>
-									</Form.Group>
-									<br></br>
+
 									{picMessage && <ErrorMessage variant="danger">{picMessage}</ErrorMessage>}
 									<Form.Group controlId="pic">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Profile Picture</Form.Label>

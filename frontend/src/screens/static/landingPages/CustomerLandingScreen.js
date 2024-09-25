@@ -3,14 +3,22 @@ import { Button, Card } from "react-bootstrap";
 import { customerLogout } from "../../../actions/userManagementActions/customerActions";
 import "./landingScreen.css";
 import MainScreen from "../../../components/MainScreen";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
+import { useEffect } from "react";
 
-const CustomerLandingScreen = ({ history }) => {
+const CustomerLandingScreen = () => {
 	const customer_Login = useSelector((state) => state.customer_Login);
 	const { customerInfo } = customer_Login;
-
-	console.log(customerInfo._id);
 	const dispatch = useDispatch();
+	const history = useHistory();
+
+	// Redirect to login if customerInfo is not available
+	useEffect(() => {
+		if (!customerInfo) {
+			history.push("/customer-login"); // Redirect to login page if not logged in
+		}
+	}, [customerInfo, history]);
+
 	const logoutHandler = () => {
 		dispatch(customerLogout());
 		history.push("/");
@@ -18,7 +26,7 @@ const CustomerLandingScreen = ({ history }) => {
 
 	return (
 		<div className="customerBackground">
-			<MainScreen title={`Welcome Back ${customerInfo && customerInfo.firstName} ...`}>
+			<MainScreen title={`Welcome Back ${customerInfo ? customerInfo.firstName : "Guest"}...`}>
 				<Button
 					variant="danger"
 					onClick={logoutHandler}
@@ -46,11 +54,13 @@ const CustomerLandingScreen = ({ history }) => {
 						<div className="intro-text">
 							<br></br>
 							<br></br>
-							<Link to="/customer-view">
-								<Button id="landingBtn" variant="success" size="lg" style={{ width: 350, height: 75 }}>
-									My Account
-								</Button>
-							</Link>
+							{customerInfo && (
+								<Link to="/customer-view">
+									<Button id="landingBtn" variant="success" size="lg" style={{ width: 350, height: 75 }}>
+										My Account
+									</Button>
+								</Link>
+							)}
 							<br></br>
 							<br></br>
 						</div>

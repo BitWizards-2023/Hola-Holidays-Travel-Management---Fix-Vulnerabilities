@@ -41,6 +41,7 @@ import ReservationList from "./screens/hotelManagement/reservations/ReservationL
 import HotelReservation from "./screens/hotelManagement/reservations/HotelReservation";
 import Map from "./screens/static/map/Map";
 import LoginSignUpScreen from "./screens/static/loginSignUp/LoginSignUpScreen";
+import LoadingScreen from "./screens/static/landingPages/LoadingScreen";
 
 function App() {
 	return (
@@ -54,6 +55,7 @@ function App() {
 				<Route path="/customer-login" component={CustomerLogin} />
 				<Route path="/customer" component={CustomerLandingScreen} />
 				<Route path="/admin" component={AdminLandingScreen} />
+				<Route path="/loading" component={LoadingScreen} />
 				<Route path="/admin-register" component={AdminRegisterScreen} exact />
 				<Route path="/customer-register" component={CustomerRegisterScreen} exact />
 				<Route path="/admin-view" component={AdminViewScreen} exact />
