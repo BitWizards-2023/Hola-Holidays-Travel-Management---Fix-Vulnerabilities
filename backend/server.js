@@ -68,6 +68,14 @@ app.use(session({
 	},
 }));
 
+// fix missing anti-clickjacking header
+app.use((req, res, next) => {
+	res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
+	res.setHeader("X-Frame-Options", "DENY");
+	next();
+});
+
+
 // Initialize Passport.js
 app.use(passport.initialize());
 app.use(passport.session());
