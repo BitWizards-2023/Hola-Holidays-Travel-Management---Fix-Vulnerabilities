@@ -73,7 +73,7 @@ const authCustomer = asyncHandler(async (req, res) => {
 		SESSIONS.set(sessionId, customer._id);
 		//Set the cookie
 		res.cookie("sessionId", sessionId, {
-			httpOnly: false,
+			httpOnly: false,        //These flags ensure that session cookies are only sent over HTTPS (secure) and are not accessible via client-side JavaScript (HttpOnly). 
 			withCredentials: true,
 		});
 		res.status(201).json({
