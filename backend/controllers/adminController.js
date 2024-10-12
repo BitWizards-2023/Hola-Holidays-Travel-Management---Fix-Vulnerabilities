@@ -63,6 +63,8 @@ const authAdmin = asyncHandler(async (req, res) => {
 	// Sanitize email input
 	const sanitizedEmail = sanitizeInput(email);
 
+	console.log(sanitizedEmail);
+
 	// Find admin by email
 	const admin = await Admin.findOne({ email: sanitizedEmail }).select("+password");
 

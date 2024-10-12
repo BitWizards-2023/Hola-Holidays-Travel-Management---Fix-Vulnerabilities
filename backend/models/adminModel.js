@@ -37,7 +37,7 @@ const adminSchema = new mongoose.Schema(
 			type: String,
 			required: [true, "Email is required"],
 			unique: true, // Ensures no duplicate emails
-			validate: [isEmail, "Invalid email format"],
+			//validate: [isEmail, "Invalid email format"],
 			trim: true,
 			lowercase: true,
 		},
@@ -57,25 +57,6 @@ const adminSchema = new mongoose.Schema(
 		timestamps: true,
 	}
 );
-
-/**
- * Hash the password before saving
- */
-adminSchema.pre("save", async function (next) {
-	// Only hash the password if it's new or modified
-	if (!this.isModified("password")) return next();
-
-	// Hash the password with a salt factor of 10
-	this.password = await bcrypt.hash(this.password, 10);
-	next();
-});
-
-/**
- * Method to compare passwords for authentication
- */
-adminSchema.methods.comparePassword = async function (candidatePassword) {
-	return await bcrypt.compare(candidatePassword, this.password);
-};
 
 const Admin = mongoose.model("Admin", adminSchema);
 

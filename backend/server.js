@@ -15,9 +15,10 @@ const tourGuideRoutes = require("./routes/TourGuideRoutes");
 const hotelRoutes = require("./routes/hotelRoutes");
 const roomRoutes = require("./routes/roomRoutes");
 const reservationRoutes = require("./routes/reservationRoutes");
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require("./routes/authRoutes");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
-require('./config/passportConfig'); // Passport config
+require("./config/passportConfig"); // Passport config
+const connectRedis = require("./utils/connetctRedis");
 
 dotenv.config();
 connectDB();
@@ -27,46 +28,51 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Secure CORS configuration
-const allowedOrigins = ['http://localhost:3000'];
+const allowedOrigins = ["http://localhost:3000"];
 
 //Fixed Cross-domain miss-configuration of the backend
-app.use(cors({
-	origin: function (origin, callback) {
-		if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-			callback(null, true);
-		} else {
-			callback(new Error('Not allowed by CORS'));
-		}
-	},
-	credentials: true,
-	methods: ['GET', 'POST', 'PUT', 'DELETE'],
-	allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
+app.use(
+	cors({
+		origin: function (origin, callback) {
+			if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+				callback(null, true);
+			} else {
+				callback(new Error("Not allowed by CORS"));
+			}
+		},
+		credentials: true,
+		methods: ["GET", "POST", "PUT", "DELETE"],
+		allowedHeaders: ["Content-Type", "Authorization"],
+	})
+);
 
 // Secure HTTP Headers using Helmet
 app.use(helmet());
 
 // Configure Content Security Policy (CSP) to mitigate XSS attacks
-app.use(helmet.contentSecurityPolicy({
-	directives: {
-		defaultSrc: ["'self'"],
-		scriptSrc: ["'self'", "trusted-scripts.com"],
-		styleSrc: ["'self'", "trusted-styles.com"],
-	},
-	reportOnly: true, // Enable CSP report-only mode during testing
-}));
+app.use(
+	helmet.contentSecurityPolicy({
+		directives: {
+			defaultSrc: ["'self'"],
+			scriptSrc: ["'self'", "trusted-scripts.com"],
+			styleSrc: ["'self'", "trusted-styles.com"],
+		},
+		reportOnly: true, // Enable CSP report-only mode during testing
+	})
+);
 
 // Session Middleware Configuration
-app.use(session({
-	secret: process.env.SECRET_KEY, // Use a strong secret in production
-	resave: false, // Avoid resaving session if not modified
-	saveUninitialized: false, // Only create session when something is stored
-	cookie: {
-		secure: false, // Set to true when using HTTPS in production
-		httpOnly: true, // Prevent client-side access to session cookie
-	},
-}));
+app.use(
+	session({
+		secret: process.env.SECRET_KEY, // Use a strong secret in production
+		resave: false, // Avoid resaving session if not modified
+		saveUninitialized: false, // Only create session when something is stored
+		cookie: {
+			secure: false, // Set to true when using HTTPS in production
+			httpOnly: true, // Prevent client-side access to session cookie
+		},
+	})
+);
 
 // Initialize Passport.js
 app.use(passport.initialize());
@@ -81,7 +87,7 @@ app.get("/", (req, res) => {
 });
 
 // Auth routes (Google, Facebook, etc.)
-app.use('/', authRoutes);
+app.use("/", authRoutes);
 
 // Application routes
 app.use("/user/admin", adminRoutes);

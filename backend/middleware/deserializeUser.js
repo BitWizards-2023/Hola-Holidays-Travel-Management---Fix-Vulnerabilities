@@ -1,7 +1,6 @@
 // Import necessary modules
 const { omit } = require("lodash");
-const { excludedFields, findUniqueUser } = require("../api/auth/user.service");
-const AppError = require("../utils/appError");
+const Customer = require("../models/customerModel");
 const redisClient = require("../utils/connectRedis");
 const { verifyJwt } = require("../utils/jwt");
 
@@ -10,40 +9,51 @@ const deserializeUser = async (req, res, next) => {
 	try {
 		let access_token;
 
+		// Get access token from Authorization header or cookies
 		if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
 			access_token = req.headers.authorization.split(" ")[1];
 		} else if (req.cookies.access_token) {
 			access_token = req.cookies.access_token;
 		}
 
+		// If no access token is provided
 		if (!access_token) {
-			return next(new AppError(401, "You are not logged in"));
+			const error = new Error("You are not logged in");
+			res.status(401);
+			return next(error);
 		}
 
-		// Validate the access token
-		const decoded = verifyJwt(access_token, "accessTokenPublicKey");
-
+		// Validate the access token using the shared secret
+		const decoded = verifyJwt(access_token, "JWT_SECRET"); // Use shared secret key
 		if (!decoded) {
-			return next(new AppError(401, `Invalid token or user doesn't exist`));
+			const error = new Error("Invalid token or user doesn't exist");
+			res.status(401);
+			return next(error);
 		}
 
-		// Check if the user has a valid session
+		// Check if the session exists in Redis
 		const session = await redisClient.get(decoded.sub);
 		if (!session) {
-			return next(new AppError(401, `Invalid token or session has expired`));
+			const error = new Error("Invalid token or session has expired");
+			res.status(401);
+			return next(error);
 		}
 
-		// Check if the user still exists
-		const user = await findUniqueUser({ id: JSON.parse(session).id });
-		if (!user) {
-			return next(new AppError(401, `Invalid token or session has expired`));
+		// Find the user (customer) in MongoDB using the session ID
+		const customer = await Customer.findById(JSON.parse(session).id).select("-password");
+		if (!customer) {
+			const error = new Error("Invalid token or session has expired");
+			res.status(401);
+			return next(error);
 		}
 
-		// Add user to res.locals
-		res.locals.user = omit(user, excludedFields);
+		// Add the user (customer) to res.locals, omitting excluded fields
+		res.locals.user = omit(customer.toObject(), excludedFields);
 
+		// Move on to the next middleware
 		next();
 	} catch (err) {
+		// Pass any errors to the global error handler
 		next(err);
 	}
 };
