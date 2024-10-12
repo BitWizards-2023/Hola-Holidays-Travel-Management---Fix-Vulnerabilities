@@ -70,7 +70,7 @@ const authAdmin = asyncHandler(async (req, res) => {
 		expirationDate.setDate(expirationDate.getDate() + 2);
 		//Set the cookie
 		res.cookie("sessionId", sessionId, {
-			httpOnly: false,
+			httpOnly: false,     // Protecting admin session cookies from being exposed over insecure channels.
 			withCredentials: true,
 			expires: expirationDate,
 		});
