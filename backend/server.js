@@ -70,8 +70,8 @@ app.use(session({
 
 // fix missing anti-clickjacking header
 app.use((req, res, next) => {
-	res.setHeader("Content-Security-Policy", "frame-ancestors 'self'");
-	res.setHeader("X-Frame-Options", "DENY");
+	res.setHeader("Content-Security-Policy", "frame-ancestors 'self'"); //This directive tells the browser that your application can only be embedded in frames or iframes by the same origin
+	res.setHeader("X-Frame-Options", "DENY");  //tells the browser to completely prevent your content from being embedded in any iframe, even from your own site.
 	next();
 });
 
