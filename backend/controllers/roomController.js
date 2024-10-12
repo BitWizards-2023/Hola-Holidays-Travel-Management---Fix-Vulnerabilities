@@ -1,99 +1,184 @@
-const Room = require("../models/roomModel");
+const Site = require("../models/siteModel");
 const asyncHandler = require("express-async-handler");
-const Customer = require("../models/customerModel");
 
-const getRooms = asyncHandler(async (req, res) => {
-	const rooms = await Room.find({ hotel: req.params.id });
-	res.json(rooms);
-});
+// Utility function to sanitize input by removing unwanted characters ($ and .)
+const sanitizeInput = (input) => {
+	if (typeof input === "string") {
+		return input.replace(/[$.]/g, "").trim(); // Removes $ and . from strings and trims the input
+	}
+	if (Array.isArray(input)) {
+		return input.map((item) => sanitizeInput(item)); // Recursively sanitize each item if input is an array
+	}
+	return input;
+};
 
-const createRoom = asyncHandler(async (req, res) => {
-	const { admin, hotel, roomType, availability, beds, roomSize, roomFacilities, bathRoomFacilities, price, pic } =
-		req.body;
+// Add a new site
+const addSite = asyncHandler(async (req, res) => {
+	let {
+		siteName,
+		country,
+		province,
+		siteLocation,
+		postalCode,
+		picURL,
+		description,
+		recommendations,
+		specialEvents,
+		specialInstructions,
+		moreInfoURL,
+	} = req.body;
 
-	if (
-		!admin ||
-		!hotel ||
-		!roomType ||
-		!availability ||
-		!beds ||
-		!roomSize ||
-		!roomFacilities ||
-		!bathRoomFacilities ||
-		!price ||
-		!pic
-	) {
+	// Sanitize all inputs
+	siteName = sanitizeInput(siteName);
+	country = sanitizeInput(country);
+	province = sanitizeInput(province);
+	siteLocation = sanitizeInput(siteLocation);
+	postalCode = sanitizeInput(postalCode);
+	picURL = sanitizeInput(picURL);
+	description = sanitizeInput(description);
+	recommendations = sanitizeInput(recommendations);
+	specialEvents = sanitizeInput(specialEvents);
+	specialInstructions = sanitizeInput(specialInstructions);
+	moreInfoURL = sanitizeInput(moreInfoURL);
+
+	const siteExists = await Site.findOne({ siteName });
+	if (siteExists) {
 		res.status(400);
-		throw new Error("Please Fill all the feilds");
+		throw new Error("Site Already Exists!");
 	} else {
-		const room = new Room({
-			admin,
-			hotel,
-			roomType,
-			availability,
-			beds,
-			roomSize,
-			roomFacilities,
-			bathRoomFacilities,
-			price,
-			pic,
-		});
+		if (
+			!siteName ||
+			!country ||
+			!province ||
+			!siteLocation ||
+			!postalCode ||
+			!picURL ||
+			!description ||
+			!recommendations ||
+			!specialEvents ||
+			!specialInstructions ||
+			!moreInfoURL
+		) {
+			res.status(400);
+			throw new Error("Please fill all the fields");
+		} else {
+			const site = new Site({
+				siteName,
+				country,
+				province,
+				siteLocation,
+				postalCode,
+				picURL,
+				description,
+				recommendations,
+				specialEvents,
+				specialInstructions,
+				moreInfoURL,
+			});
 
-		const createdRoom = await room.save();
-
-		res.status(201).json(createdRoom);
+			const addedSite = await site.save();
+			res.status(201).json(addedSite);
+		}
 	}
 });
 
-const getRoomById = asyncHandler(async (req, res) => {
-	const room = await Room.findById(req.params.id);
+// Get all sites
+const getSites = asyncHandler(async (req, res) => {
+	const sites = await Site.find();
+	res.json(sites);
+});
 
-	if (room) {
-		res.json(room);
+// Get sites for a specific location
+const getSitesForEachLocation = asyncHandler(async (req, res) => {
+	const sanitizedProvince = sanitizeInput(req.params.id);
+	const sites = await Site.find({ province: sanitizedProvince });
+	res.status(201).json(sites);
+});
+
+// Get a site by ID
+const getSiteById = asyncHandler(async (req, res) => {
+	const sanitizedSiteId = sanitizeInput(req.params.id);
+	const site = await Site.findById(sanitizedSiteId);
+
+	if (site) {
+		res.json(site);
 	} else {
-		res.status(404).json({ message: "Room not found" });
+		res.status(404).json({ message: "Site not found" });
 	}
 });
 
-const updateRoom = asyncHandler(async (req, res) => {
-	const { roomType, availability, beds, roomSize, roomFacilities, bathRoomFacilities, price, pic } = req.body;
+// Update a site
+const updateSite = asyncHandler(async (req, res) => {
+	let {
+		siteName,
+		country,
+		province,
+		siteLocation,
+		postalCode,
+		picURL,
+		description,
+		recommendations,
+		specialEvents,
+		specialInstructions,
+		moreInfoURL,
+	} = req.body;
 
-	const room = await Room.findById(req.params.id);
+	// Sanitize all inputs
+	siteName = sanitizeInput(siteName);
+	country = sanitizeInput(country);
+	province = sanitizeInput(province);
+	siteLocation = sanitizeInput(siteLocation);
+	postalCode = sanitizeInput(postalCode);
+	picURL = sanitizeInput(picURL);
+	description = sanitizeInput(description);
+	recommendations = sanitizeInput(recommendations);
+	specialEvents = sanitizeInput(specialEvents);
+	specialInstructions = sanitizeInput(specialInstructions);
+	moreInfoURL = sanitizeInput(moreInfoURL);
 
-	if (room) {
-		room.roomType = roomType;
-		room.availability = availability;
-		room.beds = beds;
-		room.roomSize = roomSize;
-		room.roomFacilities = roomFacilities;
-		room.bathRoomFacilities = bathRoomFacilities;
-		room.price = price;
-		room.pic = pic;
+	const sanitizedSiteId = sanitizeInput(req.params.id);
+	const site = await Site.findById(sanitizedSiteId);
 
-		const updatedRoom = await room.save();
-		res.json(updatedRoom);
+	if (site) {
+		site.siteName = siteName;
+		site.country = country;
+		site.province = province;
+		site.siteLocation = siteLocation;
+		site.postalCode = postalCode;
+		site.picURL = picURL;
+		site.description = description;
+		site.recommendations = recommendations;
+		site.specialEvents = specialEvents;
+		site.specialInstructions = specialInstructions;
+		site.moreInfoURL = moreInfoURL;
+
+		const updatedSite = await site.save();
+		res.json(updatedSite);
 	} else {
 		res.status(404);
-		throw new Error("Room not found");
+		throw new Error("Site not found");
 	}
 });
 
-const deleteRoom = asyncHandler(async (req, res) => {
-	const room = await Room.findById(req.params.id);
+// Delete a site
+const deleteSite = asyncHandler(async (req, res) => {
+	const sanitizedSiteId = sanitizeInput(req.params.id);
+	const site = await Site.findById(sanitizedSiteId);
 
-	if (room) {
-		await room.deleteOne();
-		res.json({ message: "Room  Removed" });
+	if (site) {
+		await site.deleteOne();
+		res.json({ message: "Site Removed" });
 	} else {
 		res.status(404);
-		throw new Error("Room  not Found");
+		throw new Error("Site not Found");
 	}
 });
 
 module.exports = {
-	getRooms,
-	createRoom,
-	getRoomById,
-	updateRoom,
-	deleteRoom,
+	addSite,
+	getSites,
+	getSitesForEachLocation,
+	getSiteById,
+	updateSite,
+	deleteSite,
 };

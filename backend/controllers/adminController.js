@@ -1,48 +1,58 @@
 const asyncHandler = require("express-async-handler");
 const Admin = require("../models/adminModel");
+const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken");
-const argon2 = require("argon2");  // Import Argon2 for password hashing
+const argon2 = require("argon2"); // Import Argon2 for password hashing
 const crypto = require("crypto");
 const SESSIONS = new Map();
 
+// Utility function to sanitize input and prevent NoSQL injection
+const sanitizeInput = (input) => {
+	return input.replace(/[$.]/g, ""); // Removes `$` and `.` to prevent injection attempts
+};
+
 // Register user as an admin
 const registerAdmin = asyncHandler(async (req, res) => {
-	const { name, telephone, address, email, password, pic } = req.body;
+	let { name, telephone, address, email, password, pic } = req.body;
 
-	const adminExists = await Admin.findOne({ email });
+	// Sanitize inputs to prevent NoSQL injection
+	name = sanitizeInput(name);
+	telephone = sanitizeInput(telephone);
+	address = sanitizeInput(address);
+	email = sanitizeInput(email);
+
+	// Check if admin already exists
+	const adminExists = await Admin.findOne({ email: sanitizeInput(email) });
 	if (adminExists) {
-		res.status(400);
-		throw new Error("Admin Profile Exists !");
+		return res.status(400).json({ message: "Admin Profile Exists!" });
 	}
 
-	// Hash the password with Argon2
+	// Hash the password before saving
 	const hashedPassword = await argon2.hash(password, { type: argon2.argon2id });
 
+	// Create new admin instance
 	const admin = new Admin({
 		name,
 		telephone,
 		address,
 		email,
-		password: hashedPassword,  // Save the hashed password
+		password: hashedPassword, // Save the hashed password
 		pic,
 	});
 
-	await admin.save();
+	const addedAdmin = await admin.save();
 
-	if (admin) {
+	if (addedAdmin) {
 		res.status(201).json({
-			_id: admin._id,
-			name: admin.name,
-			isAdmin: admin.isAdmin,
-			telephone: admin.telephone,
-			address: admin.address,
-			email: admin.email,
-			pic: admin.pic,
-			token: generateToken(admin._id),
+			_id: addedAdmin._id,
+			name: addedAdmin.name,
+			telephone: addedAdmin.telephone,
+			address: addedAdmin.address,
+			email: addedAdmin.email,
+			pic: addedAdmin.pic,
 		});
 	} else {
-		res.status(400);
-		throw new Error("Admin Registration Failed !");
+		res.status(400).json({ message: "Admin Registration Failed!" });
 	}
 });
 
@@ -50,11 +60,14 @@ const registerAdmin = asyncHandler(async (req, res) => {
 const authAdmin = asyncHandler(async (req, res) => {
 	const { email, password } = req.body;
 
-	const admin = await Admin.findOne({ email });
+	// Sanitize email input
+	const sanitizedEmail = sanitizeInput(email);
+
+	// Find admin by email
+	const admin = await Admin.findOne({ email: sanitizedEmail }).select("+password");
 
 	if (!admin) {
-		res.status(400);
-		throw new Error("Invalid Email or Password");
+		return res.status(400).json({ message: "Invalid Email or Password" });
 	}
 
 	// Verify the provided password with the stored hash
@@ -89,13 +102,12 @@ const authAdmin = asyncHandler(async (req, res) => {
 
 // View admin profile
 const getAdminProfile = asyncHandler(async (req, res) => {
-	const admin = await Admin.findById(req.admin._id);
+	const admin = await Admin.findById(req.admin._id).select("-password");
 
 	if (admin) {
-		res.status(201).json(admin);
+		res.status(200).json(admin);
 	} else {
-		res.status(400);
-		throw new Error("Admin Not Found !");
+		res.status(404).json({ message: "Admin Not Found!" });
 	}
 });
 
@@ -118,7 +130,7 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 
 		const updatedAdmin = await admin.save();
 
-		res.json({
+		res.status(200).json({
 			_id: updatedAdmin._id,
 			name: updatedAdmin.name,
 			isAdmin: updatedAdmin.isAdmin,
@@ -129,8 +141,7 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 			token: generateToken(updatedAdmin._id),
 		});
 	} else {
-		res.status(404);
-		throw new Error("Admin Not Found !");
+		res.status(404).json({ message: "Admin Not Found!" });
 	}
 });
 

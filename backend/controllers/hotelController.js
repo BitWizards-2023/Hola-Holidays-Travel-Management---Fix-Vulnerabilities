@@ -1,22 +1,47 @@
 const Hotel = require("../models/hotelModel");
 const asyncHandler = require("express-async-handler");
 
+// Utility function to sanitize input by removing unwanted characters ($ and .)
+const sanitizeInput = (input) => {
+	if (typeof input === "string") {
+		return input.replace(/[$.]/g, "").trim(); // Removes `$` and `.` characters and trims the input
+	}
+	if (Array.isArray(input)) {
+		return input.map((item) => sanitizeInput(item)); // Recursively sanitize each item if input is an array
+	}
+	return input;
+};
+
+// Get hotels for a specific admin
 const gethotels = asyncHandler(async (req, res) => {
-	const items = await Hotel.find({ admin: req.params.id });
+	const sanitizedAdminId = sanitizeInput(req.params.id); // Sanitize input
+	const items = await Hotel.find({ admin: sanitizedAdminId });
 	res.json(items);
 });
 
+// Get all hotels for customers
 const gethotelsByCustomer = asyncHandler(async (req, res) => {
 	const items = await Hotel.find();
 	res.json(items);
 });
 
+// Add a new hotel
 const addHotel = asyncHandler(async (req, res) => {
-	const { admin, hotelName, address, location, description, facilities, rules, pic } = req.body;
+	let { admin, hotelName, address, location, description, facilities, rules, pic } = req.body;
+
+	// Sanitize all inputs
+	admin = sanitizeInput(admin);
+	hotelName = sanitizeInput(hotelName);
+	address = sanitizeInput(address);
+	location = sanitizeInput(location);
+	description = sanitizeInput(description);
+	facilities = sanitizeInput(facilities);
+	rules = sanitizeInput(rules);
+	pic = sanitizeInput(pic);
 
 	if (!admin || !hotelName || !address || !location || !description || !facilities || !rules || !pic) {
 		res.status(400);
-		throw new Error("Failed adding hotel");
+		throw new Error("Failed to add hotel - missing fields");
 	} else {
 		const hotel = new Hotel({
 			admin,
@@ -34,10 +59,22 @@ const addHotel = asyncHandler(async (req, res) => {
 		res.status(201).json(createdHotel);
 	}
 });
-const updateHotel = asyncHandler(async (req, res) => {
-	const { hotelName, address, location, description, facilities, rules, pic } = req.body;
 
-	const hotel = await Hotel.findById(req.params.id);
+// Update hotel details
+const updateHotel = asyncHandler(async (req, res) => {
+	let { hotelName, address, location, description, facilities, rules, pic } = req.body;
+
+	// Sanitize all inputs
+	hotelName = sanitizeInput(hotelName);
+	address = sanitizeInput(address);
+	location = sanitizeInput(location);
+	description = sanitizeInput(description);
+	facilities = sanitizeInput(facilities);
+	rules = sanitizeInput(rules);
+	pic = sanitizeInput(pic);
+
+	const sanitizedHotelId = sanitizeInput(req.params.id);
+	const hotel = await Hotel.findById(sanitizedHotelId);
 
 	if (hotel) {
 		hotel.hotelName = hotelName;
@@ -56,8 +93,10 @@ const updateHotel = asyncHandler(async (req, res) => {
 	}
 });
 
+// Get a hotel by ID
 const getHotelById = asyncHandler(async (req, res) => {
-	const hotel = await Hotel.findById(req.params.id);
+	const sanitizedHotelId = sanitizeInput(req.params.id); // Sanitize input
+	const hotel = await Hotel.findById(sanitizedHotelId);
 
 	if (hotel) {
 		res.json(hotel);
@@ -66,8 +105,11 @@ const getHotelById = asyncHandler(async (req, res) => {
 	}
 });
 
+// Delete a hotel
 const deleteHotel = asyncHandler(async (req, res) => {
-	const hotel = await Hotel.findById(req.params._id);
+	const sanitizedHotelId = sanitizeInput(req.params._id); // Sanitize input
+	const hotel = await Hotel.findById(sanitizedHotelId);
+
 	if (hotel) {
 		await hotel.deleteOne();
 		res.json({ message: "Item Removed" });
@@ -76,6 +118,7 @@ const deleteHotel = asyncHandler(async (req, res) => {
 		throw new Error("Item not Found");
 	}
 });
+
 module.exports = {
 	gethotels,
 	addHotel,

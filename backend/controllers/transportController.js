@@ -1,10 +1,21 @@
 const asyncHandler = require("express-async-handler");
 const busSchema = require("../models/transportModel");
 
-//add new bus entry
+// Utility function to sanitize input by removing unwanted characters ($ and .)
+const sanitizeInput = (input) => {
+	if (typeof input === "string") {
+		return input.replace(/[$.]/g, "").trim(); // Removes `$` and `.` characters and trims whitespace
+	}
+	if (Array.isArray(input)) {
+		return input.map((item) => sanitizeInput(item)); // Recursively sanitize each item if input is an array
+	}
+	return input;
+};
+
+// Add new bus entry
 const addNewTransport = asyncHandler(async (req, res) => {
-	//get bus details
-	const {
+	// Get bus details and sanitize them
+	let {
 		licensePlate,
 		startingStation,
 		destinationStation,
@@ -17,53 +28,53 @@ const addNewTransport = asyncHandler(async (req, res) => {
 		leavingTime,
 	} = req.body;
 
-	//create new bus entry
+	// Sanitize all input fields
+	licensePlate = sanitizeInput(licensePlate);
+	startingStation = sanitizeInput(startingStation);
+	destinationStation = sanitizeInput(destinationStation);
+	totalTravelTime = sanitizeInput(totalTravelTime);
+	totalNumberOfSeats = sanitizeInput(totalNumberOfSeats);
+	ticketPrice = sanitizeInput(ticketPrice);
+	facilities = sanitizeInput(facilities);
+	cityStops = sanitizeInput(cityStops);
+	mobileNo = sanitizeInput(mobileNo);
+	leavingTime = sanitizeInput(leavingTime);
+
+	// Create new bus entry
 	const newTransport = new busSchema({
-		licensePlate: licensePlate,
-		startingStation: startingStation,
-		destinationStation: destinationStation,
-		totalTravelTime: totalTravelTime,
-		totalNumberOfSeats: totalNumberOfSeats,
-		ticketPrice: ticketPrice,
-		facilities: facilities,
-		cityStops: cityStops,
-		mobileNo: mobileNo,
-		leavingTime: leavingTime,
+		licensePlate,
+		startingStation,
+		destinationStation,
+		totalTravelTime,
+		totalNumberOfSeats,
+		ticketPrice,
+		facilities,
+		cityStops,
+		mobileNo,
+		leavingTime,
 	});
 
-	//save new bus entry
+	// Save new bus entry
 	await newTransport.save();
 
 	if (newTransport) {
-		res.status(201).json({
-			_id: newTransport._id,
-			licensePlate: newTransport.licensePlate,
-			startingStation: newTransport.startingStation,
-			destinationStation: newTransport.destinationStation,
-			totalTravelTime: newTransport.totalTravelTime,
-			totalNumberOfSeats: newTransport.totalNumberOfSeats,
-			ticketPrice: newTransport.ticketPrice,
-			facilities: newTransport.facilities,
-			cityStops: newTransport.cityStops,
-			mobileNo: newTransport.mobileNo,
-			leavingTime: newTransport.leavingTime,
-		});
+		res.status(201).json(newTransport);
 	} else {
 		res.status(400);
 		throw new Error("Failed to add a new bus entry!");
 	}
 });
 
-//get all bus entries
+// Get all bus entries
 const getTransport = asyncHandler(async (req, res) => {
 	const bus = await busSchema.find();
 	res.json(bus);
 });
 
-//get a bus entry by id
+// Get a bus entry by ID
 const getOneTransport = asyncHandler(async (req, res) => {
-	//get bus id
-	const bus_id = req.params.id;
+	// Get and sanitize bus ID
+	const bus_id = sanitizeInput(req.params.id);
 
 	const bus = await busSchema.findById(bus_id);
 
@@ -75,10 +86,10 @@ const getOneTransport = asyncHandler(async (req, res) => {
 	}
 });
 
-//delete a bus entry
+// Delete a bus entry
 const deleteTransport = asyncHandler(async (req, res) => {
-	//get bus id
-	const bus_id = req.params.id;
+	// Get and sanitize bus ID
+	const bus_id = sanitizeInput(req.params.id);
 
 	const bus = await busSchema.findById(bus_id);
 
@@ -91,40 +102,29 @@ const deleteTransport = asyncHandler(async (req, res) => {
 	}
 });
 
-//update a bus entry
+// Update a bus entry
 const updateTransport = asyncHandler(async (req, res) => {
-	//get bus id
-	const bus_id = req.params.id;
+	// Get and sanitize bus ID
+	const bus_id = sanitizeInput(req.params.id);
 
 	const bus = await busSchema.findById(bus_id);
 
 	if (bus) {
-		bus.licensePlate = req.body.licensePlate || bus.licensePlate;
-		bus.startingStation = req.body.startingStation || bus.startingStation;
-		bus.destinationStation = req.body.destinationStation || bus.destinationStation;
-		bus.totalTravelTime = req.body.totalTravelTime || bus.totalTravelTime;
-		bus.totalNumberOfSeats = req.body.totalNumberOfSeats || bus.totalNumberOfSeats;
-		bus.ticketPrice = req.body.ticketPrice || bus.ticketPrice;
-		bus.facilities = req.body.facilities || bus.facilities;
-		bus.cityStops = req.body.cityStops || bus.cityStops;
-		bus.mobileNo = req.body.mobileNo || bus.mobileNo;
-		bus.leavingTime = req.body.leavingTime || bus.leavingTime;
+		// Sanitize and update input fields
+		bus.licensePlate = sanitizeInput(req.body.licensePlate) || bus.licensePlate;
+		bus.startingStation = sanitizeInput(req.body.startingStation) || bus.startingStation;
+		bus.destinationStation = sanitizeInput(req.body.destinationStation) || bus.destinationStation;
+		bus.totalTravelTime = sanitizeInput(req.body.totalTravelTime) || bus.totalTravelTime;
+		bus.totalNumberOfSeats = sanitizeInput(req.body.totalNumberOfSeats) || bus.totalNumberOfSeats;
+		bus.ticketPrice = sanitizeInput(req.body.ticketPrice) || bus.ticketPrice;
+		bus.facilities = sanitizeInput(req.body.facilities) || bus.facilities;
+		bus.cityStops = sanitizeInput(req.body.cityStops) || bus.cityStops;
+		bus.mobileNo = sanitizeInput(req.body.mobileNo) || bus.mobileNo;
+		bus.leavingTime = sanitizeInput(req.body.leavingTime) || bus.leavingTime;
 
 		const updatedBus = await bus.save();
 
-		res.json({
-			_id: updatedBus._id,
-			licensePlate: updatedBus.licensePlate,
-			startingStation: updatedBus.startingStation,
-			destinationStation: updatedBus.destinationStation,
-			totalTravelTime: updatedBus.totalTravelTime,
-			totalNumberOfSeats: updatedBus.totalNumberOfSeats,
-			ticketPrice: updatedBus.ticketPrice,
-			facilities: updatedBus.facilities,
-			cityStops: updatedBus.cityStops,
-			mobileNo: updatedBus.mobileNo,
-			leavingTime: updatedBus.leavingTime,
-		});
+		res.json(updatedBus);
 	} else {
 		res.status(404);
 		throw new Error("Bus entry not found!");
