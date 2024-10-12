@@ -1,11 +1,11 @@
 const asyncHandler = require("express-async-handler");
 const Admin = require("../models/adminModel");
 const generateToken = require("../utils/generateToken");
-const bcrypt = require("bcryptjs");
+const argon2 = require("argon2");  // Import Argon2 for password hashing
 const crypto = require("crypto");
 const SESSIONS = new Map();
 
-// register user as a admin
+// Register user as an admin
 const registerAdmin = asyncHandler(async (req, res) => {
 	const { name, telephone, address, email, password, pic } = req.body;
 
@@ -15,18 +15,17 @@ const registerAdmin = asyncHandler(async (req, res) => {
 		throw new Error("Admin Profile Exists !");
 	}
 
+	// Hash the password with Argon2
+	const hashedPassword = await argon2.hash(password, { type: argon2.argon2id });
+
 	const admin = new Admin({
 		name,
 		telephone,
 		address,
 		email,
-		password,
+		password: hashedPassword,  // Save the hashed password
 		pic,
 	});
-
-	const salt = await bcrypt.genSalt(10);
-
-	admin.password = await bcrypt.hash(password, salt);
 
 	await admin.save();
 
@@ -47,7 +46,7 @@ const registerAdmin = asyncHandler(async (req, res) => {
 	}
 });
 
-// authenticate the admin
+// Authenticate the admin
 const authAdmin = asyncHandler(async (req, res) => {
 	const { email, password } = req.body;
 
@@ -55,12 +54,13 @@ const authAdmin = asyncHandler(async (req, res) => {
 
 	if (!admin) {
 		res.status(400);
-		throw new Error("Invalid NIC or Password");
+		throw new Error("Invalid Email or Password");
 	}
 
-	const isMatch = await bcrypt.compare(password, admin.password);
+	// Verify the provided password with the stored hash
+	const isPasswordMatch = await argon2.verify(admin.password, password);
 
-	if (!isMatch) {
+	if (!isPasswordMatch) {
 		res.status(400);
 		throw new Error("Invalid Email or Password");
 	} else {
@@ -68,7 +68,8 @@ const authAdmin = asyncHandler(async (req, res) => {
 		SESSIONS.set(sessionId, admin._id);
 		const expirationDate = new Date();
 		expirationDate.setDate(expirationDate.getDate() + 2);
-		//Set the cookie
+
+		// Set the cookie
 		res.cookie("sessionId", sessionId, {
 			httpOnly: false,
 			withCredentials: true,
@@ -80,14 +81,13 @@ const authAdmin = asyncHandler(async (req, res) => {
 			telephone: admin.telephone,
 			address: admin.address,
 			email: admin.email,
-			password: admin.password,
 			pic: admin.pic,
 			token: generateToken(admin._id),
 		});
 	}
 });
 
-// view admin profile
+// View admin profile
 const getAdminProfile = asyncHandler(async (req, res) => {
 	const admin = await Admin.findById(req.admin._id);
 
@@ -99,7 +99,7 @@ const getAdminProfile = asyncHandler(async (req, res) => {
 	}
 });
 
-// update admin profile
+// Update admin profile
 const updateAdminProfile = asyncHandler(async (req, res) => {
 	const admin = await Admin.findById(req.admin._id);
 
@@ -109,10 +109,13 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 		admin.address = req.body.address || admin.address;
 		admin.email = req.body.email || admin.email;
 		admin.pic = req.body.pic || admin.pic;
+
+		// If the password is being updated, hash it
 		if (req.body.password) {
-			const salt = await bcrypt.genSalt(10);
-			admin.password = await bcrypt.hash(req.body.password, salt);
+			const hashedPassword = await argon2.hash(req.body.password, { type: argon2.argon2id });
+			admin.password = hashedPassword;
 		}
+
 		const updatedAdmin = await admin.save();
 
 		res.json({
@@ -131,4 +134,9 @@ const updateAdminProfile = asyncHandler(async (req, res) => {
 	}
 });
 
-module.exports = { registerAdmin, authAdmin, getAdminProfile, updateAdminProfile };
+module.exports = {
+	registerAdmin,
+	authAdmin,
+	getAdminProfile,
+	updateAdminProfile,
+};

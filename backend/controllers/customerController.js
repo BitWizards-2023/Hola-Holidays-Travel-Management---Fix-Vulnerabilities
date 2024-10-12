@@ -1,7 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Customer = require("../models/customerModel");
 const generateToken = require("../utils/generateToken");
-const bcrypt = require("bcryptjs");
+const argon2 = require("argon2");
 const crypto = require("crypto");
 const SESSIONS = new Map();
 
@@ -15,6 +15,11 @@ const registerCustomer = asyncHandler(async (req, res) => {
 		throw new Error("Customer Profile Exists !");
 	}
 
+	// Hash the password using Argon2
+	const hashedPassword = await argon2.hash(password, {
+		type: argon2.argon2id,
+	});
+
 	const customer = new Customer({
 		firstName,
 		lastName,
@@ -23,7 +28,7 @@ const registerCustomer = asyncHandler(async (req, res) => {
 		gender,
 		country,
 		email,
-		password,
+		password: hashedPassword, // Store the hashed password
 		pic,
 	});
 
@@ -59,7 +64,10 @@ const authCustomer = asyncHandler(async (req, res) => {
 		throw new Error("Invalid Email or Password");
 	}
 
-	if (!(password === customer.password)) {
+	// Verify the password using Argon2
+	const isPasswordMatch = await argon2.verify(customer.password, password);
+
+	if (!isPasswordMatch) {
 		res.status(400);
 		throw new Error("Invalid Email or Password");
 	} else {
@@ -134,10 +142,14 @@ const updateCustomerProfile = asyncHandler(async (req, res) => {
 		customer.gender = req.body.gender || customer.gender;
 		customer.country = req.body.country || customer.country;
 
-		// Prevent updates to email if it's a Google or Facebook user
+		// Prevent updates to email and password if the user is a Google or Facebook user
 		if (!isGoogleUser && !isFacebookUser) {
-			customer.email = req.body.email || customer.email; // Allow email change only if not a Google or Facebook user
-			customer.password = req.body.password || customer.password; 
+			customer.email = email || customer.email; // Allow email change only if not a Google or Facebook user
+
+			// If a new password is provided, hash the new password
+			if (password) {
+				customer.password = await argon2.hash(password, { type: argon2.argon2id });
+			}
 		}
 
 		customer.pic = req.body.pic || customer.pic;
@@ -175,9 +187,14 @@ const updateCustomerProfileById = asyncHandler(async (req, res) => {
 		customer.country = req.body.country || customer.country;
 		customer.email = req.body.email || customer.email;
 		customer.pic = req.body.pic || customer.pic;
-		if (req.body.password) {
-			const salt = await bcrypt.genSalt(10);
-			customer.password = await bcrypt.hash(req.body.password, salt);
+		// Prevent updates to email and password if the user is a Google or Facebook user
+		if (!isGoogleUser && !isFacebookUser) {
+			customer.email = email || customer.email; // Allow email change only if not a Google or Facebook user
+
+			// If a new password is provided, hash the new password
+			if (password) {
+				customer.password = await argon2.hash(password, { type: argon2.argon2id });
+			}
 		}
 		const updatedCustomer = await customer.save();
 

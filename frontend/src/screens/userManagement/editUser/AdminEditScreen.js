@@ -16,7 +16,7 @@ const AdminEditScreen = () => {
 	const [email, setEmail] = useState("");
 	const [pic, setPic] = useState("");
 	const [password, setPassword] = useState("");
-	const [confirmpassword, setConfirmPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 	const [message, setMessage] = useState(null);
 	const [picMessage, setPicMessage] = useState(null);
 
@@ -30,16 +30,17 @@ const AdminEditScreen = () => {
 	const { loading, error, success } = adminUpdate;
 
 	useEffect(() => {
-		setName(adminInfo.name);
-		setTelephone(adminInfo.telephone);
-		setAddress(adminInfo.address);
-		setEmail(adminInfo.email);
-		setPic(adminInfo.pic);
+		if (adminInfo) {
+			setName(adminInfo.name);
+			setTelephone(adminInfo.telephone);
+			setAddress(adminInfo.address);
+			setEmail(adminInfo.email);
+			setPic(adminInfo.pic);
+		}
 	}, [adminInfo]);
 
-	const resetHandler = async (e) => {
-		e.preventDefault();
-
+	// Reset form fields
+	const resetHandler = () => {
 		setName("");
 		setTelephone("");
 		setAddress("");
@@ -51,12 +52,15 @@ const AdminEditScreen = () => {
 		setPicMessage(null);
 	};
 
+	// Handle image upload
 	const postDetails = (pics) => {
 		if (pics === "https://icon-library.com/images/anonymous-avatar-icon/anonymous-avatar-icon-25.jpg") {
 			return setPicMessage("Please Select an Image");
 		}
 		setPicMessage(null);
-		if (pics.type === "image/jpeg" || pics.type === "image/png" || pics.type === "image/jpg") {
+
+		const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+		if (pics && allowedTypes.includes(pics.type)) {
 			const data = new FormData();
 			data.append("file", pics);
 			data.append("upload_preset", "adminProfile");
@@ -73,14 +77,15 @@ const AdminEditScreen = () => {
 					console.log(err);
 				});
 		} else {
-			return setPicMessage("Please Select an Image");
+			return setPicMessage("Please Select a Valid Image (JPEG/PNG)");
 		}
 	};
 
+	// Submit handler for form
 	const submitHandler = async (e) => {
 		e.preventDefault();
 
-		if (password !== confirmpassword) {
+		if (password !== confirmPassword) {
 			setMessage("Passwords do not match");
 		} else {
 			const adminUpdatedInfo = {
@@ -89,11 +94,16 @@ const AdminEditScreen = () => {
 				address,
 				email,
 				pic,
-				password,
 			};
+
+			// Only add password if it's provided
+			if (password) {
+				adminUpdatedInfo.password = password;
+			}
+
 			await dispatch(adminUpdateProfile(adminUpdatedInfo));
 
-			setTimeout(function () {
+			setTimeout(() => {
 				history.push("/admin-view");
 			}, 2000);
 
@@ -141,7 +151,7 @@ const AdminEditScreen = () => {
 							{message && <ErrorMessage variant="danger">{message}</ErrorMessage>}
 							{loading && <Loading />}
 							{success &&
-								setTimeout(function () {
+								setTimeout(() => {
 									history.push("/admin-view");
 								}, 2000)}
 						</div>
@@ -156,7 +166,7 @@ const AdminEditScreen = () => {
 											value={name}
 											onChange={(e) => setName(e.target.value)}
 											required
-										></Form.Control>
+										/>
 									</Form.Group>
 									<br></br>
 									<Form.Group controlId="adminFormBasicTelephone">
@@ -181,7 +191,12 @@ const AdminEditScreen = () => {
 									<br></br>
 									<Form.Group controlId="adminFormBasicEmail">
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Email</Form.Label>
-										<Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+										<Form.Control
+											type="email"
+											value={email}
+											onChange={(e) => setEmail(e.target.value)}
+											required
+										/>
 									</Form.Group>
 									<br></br>
 									<Form.Group controlId="formBasicPassword">
@@ -198,7 +213,7 @@ const AdminEditScreen = () => {
 										<Form.Label style={{ fontWeight: "bold", fontStyle: "italic" }}>Confirm Password</Form.Label>
 										<Form.Control
 											type="password"
-											value={confirmpassword}
+											value={confirmPassword}
 											placeholder="Confirm Password"
 											onChange={(e) => setConfirmPassword(e.target.value)}
 										/>
