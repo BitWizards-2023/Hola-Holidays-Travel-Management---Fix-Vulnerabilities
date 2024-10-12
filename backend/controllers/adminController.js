@@ -14,9 +14,9 @@ const registerAdmin = asyncHandler(async (req, res) => {
 		res.status(400);
 		throw new Error("Admin Profile Exists !");
 	}
-	const user = ADMIN_SESSIONS.get(req.cookies.sessionId);
+	const user = ADMIN_SESSIONS.get(req.cookies.sessionId); // Using ADMIN_SESSIONS to validate session IDs before allowing admin action
 	if (user == null) {
-		res.sendStatus(401);
+		res.sendStatus(401);  //This ensures that only authenticated sessions can access or perform admin actions, protecting sensitive operations
 		return;
 	}
 
